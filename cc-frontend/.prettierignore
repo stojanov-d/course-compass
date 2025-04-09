@@ -1,0 +1,22 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+build
+out
+.vite
+
+# Cache directories
+.turbo
+.eslintcache
+
+# Coverage directory
+coverage
+
+# Lockfiles
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+.env*
