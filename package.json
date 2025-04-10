@@ -1,0 +1,30 @@
+{
+  "name": "course-compass",
+  "version": "1.0.0",
+  "description": "Server-less web application designed to enhance the student experience at the Faculty of Computer Science and Engineering (FINKI) by enabling the students to discuss and review different courses so they can choose their courses each semester.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stojanov-d/course-compass.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/stojanov-d/course-compass/issues"
+  },
+  "homepage": "https://github.com/stojanov-d/course-compass#readme",
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.0"
+  },
+  "lint-staged":{
+    "cc-frontend/**/*.{js,jsx,ts,tsx}":[
+      "npm run lint --prefix cc-frontend"
+    ]
+  }
+}
