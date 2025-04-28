@@ -102,7 +102,6 @@ dist
 
 # vuepress v2.x temp and cache directory
 .temp
-# .cache # Duplicate of parcel-bundler cache section entry, removed
 
 # vitepress build output
 **/.vitepress/dist
@@ -135,12 +134,6 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-# Duplicates removed below this line are handled by entries above
-pnpm-debug.log* # Different from .pnpm-debug.log* above
-node_modules # Keep this distinct from node_modules/ above if needed, otherwise remove
-dist-ssr
-*.local
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -151,3 +144,46 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Visual Studio / .NET
+bin
+obj
+csx
+.vs
+edge
+Publish
+*.user
+*.cscfg
+*.Cache
+project.lock.json
+
+# Testing
+/packages
+/TestResults
+/tools/NuGet.exe
+/App_Data
+
+# Secrets & local settings
+/secrets
+/data
+.secrets
+appsettings.json
+local.settings.json
+
+# Python specific
+.python_packages/
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Azurite artifacts
+__blobstorage__
+__queuestorage__
+__azurite_db*__.json
