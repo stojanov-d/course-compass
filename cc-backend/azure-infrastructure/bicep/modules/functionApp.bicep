@@ -24,7 +24,7 @@ param useKeyVaultReference bool = false
 param keyVaultReferenceIdentity string = 'SystemAssigned'
 
 @description('Runtime stack for Function App')
-param linuxFxVersion string = 'NODE|20'
+param linuxFxVersion string = 'NODE|22'
 
 @description('Creates the App Service Plan (Consumption)')
 resource functionPlan 'Microsoft.Web/serverfarms@2024-04-01' = {
