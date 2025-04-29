@@ -1,0 +1,5 @@
+# TO DO
+# Create workflow files for continous integration (build,test,lint..)
+# Configure build and test steps for both frontend and backend
+# Create deployment workflow for backend
+# Create deployment workflow for frontend
