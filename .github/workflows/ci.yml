@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  frontend-ci:
+    name: Frontend CI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./cc-frontend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: "./cc-frontend/package-lock.json"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Build
+        run: npm run build
+
+  backend-ci:
+    name: Backend CI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./cc-backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: "./cc-backend/package-lock.json"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+  bicep-validation:
+    name: Bicep Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Bicep CLI
+        run: |
+          curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
+          chmod +x ./bicep
+          sudo mv ./bicep /usr/local/bin/bicep
+
+      - name: Validate Bicep templates
+        run: |
+          bicep build cc-backend/azure-infrastructure/bicep/main.bicep
+          bicep build cc-backend/azure-infrastructure/bicep/modules/functionApp.bicep
+          bicep build cc-backend/azure-infrastructure/bicep/modules/keyVault.bicep
+          bicep build cc-backend/azure-infrastructure/bicep/modules/keyVaultAccess.bicep
+          bicep build cc-backend/azure-infrastructure/bicep/modules/keyVaultSecret.bicep
+          bicep build cc-backend/azure-infrastructure/bicep/modules/storageAccount.bicep
+          bicep build cc-backend/azure-infrastructure/bicep/modules/storageTable.bicep
