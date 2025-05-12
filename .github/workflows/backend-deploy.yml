@@ -34,7 +34,7 @@ jobs:
           resourceGroupName: ${{ secrets.AZURE_RESOURCE_GROUP }}
           template: ./cc-backend/azure-infrastructure/bicep/main.bicep
           parameters: baseName=ccompass environment=dev
-          deploymentName: coursecompass-infra-${{ github.run_number }}
+          deploymentName: ccompass-infra-${{ github.run_number }}
 
   deploy-function-app:
     name: Deploy Function App
@@ -52,7 +52,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: "./cc-backend/package-lock.json"
 
@@ -70,6 +70,6 @@ jobs:
       - name: Deploy to Azure Function App
         uses: Azure/functions-action@v1
         with:
-          app-name: "coursecompass-func-dev"
+          app-name: "ccompass-func-dev"
           package: "./cc-backend"
           respect-funcignore: true
