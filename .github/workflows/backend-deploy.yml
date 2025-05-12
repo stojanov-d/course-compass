@@ -1,0 +1,73 @@
+name: Backend Deployment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "cc-backend/**"
+      - ".github/workflows/backend-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy-infrastructure:
+    name: Deploy Azure Infrastructure
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy Bicep Template
+        uses: azure/arm-deploy@v1
+        with:
+          scope: resourcegroup
+          resourceGroupName: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          template: ./cc-backend/azure-infrastructure/bicep/main.bicep
+          parameters: baseName=ccompass environment=dev
+          deploymentName: coursecompass-infra-${{ github.run_number }}
+
+  deploy-function-app:
+    name: Deploy Function App
+    runs-on: ubuntu-latest
+    needs: deploy-infrastructure
+    defaults:
+      run:
+        working-directory: ./cc-backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: "./cc-backend/package-lock.json"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy to Azure Function App
+        uses: Azure/functions-action@v1
+        with:
+          app-name: "coursecompass-func-dev"
+          package: "./cc-backend"
+          respect-funcignore: true
