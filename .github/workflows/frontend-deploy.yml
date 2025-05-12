@@ -16,6 +16,7 @@ jobs:
   build-and-deploy:
     name: Build and Deploy Frontend
     runs-on: ubuntu-latest
+    environment: Azure
     defaults:
       run:
         working-directory: ./cc-frontend
