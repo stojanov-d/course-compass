@@ -67,9 +67,21 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Get Storage Account Key
+        id: get-storage-key
+        run: |
+          STORAGE_KEY=$(az storage account keys list --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} --account-name ccompassdev --query '[0].value' -o tsv)
+          CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=ccompassdev;AccountKey=${STORAGE_KEY};EndpointSuffix=core.windows.net"
+          echo "CONNECTION_STRING=${CONNECTION_STRING}" >> $GITHUB_OUTPUT
+
       - name: Deploy to Azure Function App
         uses: Azure/functions-action@v1
         with:
           app-name: "ccompass-func-dev"
           package: "./cc-backend"
           respect-funcignore: true
+          scm-do-build-during-deployment: true
+          enable-oryx-build: false
+        env:
+          AzureWebJobsStorage: ${{ steps.get-storage-key.outputs.CONNECTION_STRING }}
+          WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: ${{ steps.get-storage-key.outputs.CONNECTION_STRING }}

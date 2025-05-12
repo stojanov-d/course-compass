@@ -79,6 +79,22 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
   }
 }
 
+@description('Reference to the existing storage account')
+resource storageAccount 'Microsoft.Storage/storageAccounts@2021-08-01' existing = {
+  name: storageAccountName
+}
+
+@description('Grant Function App managed identity access to storage')
+resource storageRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(subscription().id, functionApp.id, storageAccountName, 'StorageBlobDataContributor')
+  scope: storageAccount
+  properties: {
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')
+    principalId: functionApp.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 output name string = functionApp.name
 output id string = functionApp.id
 output defaultHostName string = functionApp.properties.defaultHostName
