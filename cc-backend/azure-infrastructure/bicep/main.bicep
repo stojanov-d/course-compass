@@ -65,10 +65,9 @@ module functionApp './modules/functionApp.bicep' = {
 }
 
 module storageTable './modules/storageTable.bicep' = {
-  name: 'tableDeployment'
+  name: 'tablesDeployment'
   params: {
     storageAccountName: storage.outputs.storageAccountName
-    tableName: 'courses'
   }
 }
 
