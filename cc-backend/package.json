@@ -9,7 +9,14 @@
     "clean": "rimraf dist",
     "prestart": "npm run clean && npm run build",
     "start": "func start --verbose",
-    "test": "echo \"No tests yet...\""
+    "dev:init": "npm run build && node dist/src/scripts/initTables.js",
+    "dev:seed": "npm run build && node dist/src/scripts/seedDev.js",
+    "dev:setup": "npm run dev:init && npm run dev:seed",
+    "dev:reset": "npm run build && node dist/src/scripts/cleanup.js reset && npm run dev:seed",
+    "cleanup": "npm run build && node dist/src/scripts/cleanup.js",
+    "azurite:start": "azurite --silent --location ./azurite-data --debug ./azurite-data/debug.log",
+    "dev": "concurrently \"npm run azurite:start\" \"npm run watch\" \"func start --verbose\"",
+    "dev:win": "concurrently \"npm run azurite:start\" \"npm run watch\" \"func start --verbose\""
   },
   "dependencies": {
     "@azure/data-tables": "^13.3.0",
@@ -18,6 +25,7 @@
   "devDependencies": {
     "@types/node": "18.x",
     "azure-functions-core-tools": "^4.x",
+    "concurrently": "^9.1.2",
     "rimraf": "^5.0.0",
     "typescript": "^4.0.0"
   }
