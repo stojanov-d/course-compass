@@ -1,0 +1,27 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+build
+out
+
+# Azure Functions specific
+local.settings.json
+bin
+obj
+
+# Cache directories
+.turbo
+.eslintcache
+
+# Coverage directory
+coverage
+
+# Lockfiles
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+.env*
+.azurite

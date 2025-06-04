@@ -2,6 +2,7 @@
   "name": "cc-backend",
   "version": "1.0.0",
   "description": "",
+  "type": "module",
   "main": "dist/src/functions/*.js",
   "scripts": {
     "build": "tsc",
@@ -16,17 +17,27 @@
     "cleanup": "npm run build && node dist/src/scripts/cleanup.js",
     "azurite:start": "azurite --silent --location ./azurite-data --debug ./azurite-data/debug.log",
     "dev": "concurrently \"npm run azurite:start\" \"npm run watch\" \"func start --verbose\"",
-    "dev:win": "concurrently \"npm run azurite:start\" \"npm run watch\" \"func start --verbose\""
+    "dev:win": "concurrently \"npm run azurite:start\" \"npm run watch\" \"func start --verbose\"",
+    "lint": "eslint . --ext .js,.ts --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint . --ext .js,.ts --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@azure/data-tables": "^13.3.0",
     "@azure/functions": "^4.0.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.28.0",
     "@types/node": "18.x",
     "azure-functions-core-tools": "^4.x",
     "concurrently": "^9.1.2",
+    "eslint": "^9.28.0",
+    "eslint-config-prettier": "^10.1.5",
+    "globals": "^16.2.0",
+    "prettier": "^3.5.3",
     "rimraf": "^5.0.0",
-    "typescript": "^4.0.0"
+    "typescript": "^4.0.0",
+    "typescript-eslint": "^8.33.1"
   }
 }
