@@ -1,11 +1,18 @@
-import eslint from '@eslint/js';
-import tseslint from 'typescript-eslint';
-import eslintConfigPrettier from 'eslint-config-prettier';
-import globals from 'globals';
+const eslint = require('@eslint/js');
+const tseslint = require('typescript-eslint');
+const eslintConfigPrettier = require('eslint-config-prettier');
+const globals = require('globals');
 
-export default tseslint.config(
+module.exports = tseslint.config(
   {
-    ignores: ['node_modules/', 'dist/', 'bin/', 'obj/', '.azurite/'],
+    ignores: [
+      'node_modules/',
+      'dist/',
+      'bin/',
+      'obj/',
+      '.azurite/',
+      'azurite-data/',
+    ],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
@@ -13,12 +20,27 @@ export default tseslint.config(
     files: ['**/*.ts'],
     rules: {
       // Azure Functions specific rules
-      '@typescript-eslint/no-unused-vars': ['warn', { 
-        'argsIgnorePattern': '^_',
-        'varsIgnorePattern': '^_' 
-      }],
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+        },
+      ],
       '@typescript-eslint/no-explicit-any': 'off',
-    }
+      // Allow require imports in CommonJS environment
+      '@typescript-eslint/no-require-imports': 'off',
+      // Allow console.log for Azure Functions logging
+      'no-console': 'off',
+    },
+  },
+  {
+    files: ['**/*.js'],
+    rules: {
+      // Allow require imports in JavaScript files
+      '@typescript-eslint/no-require-imports': 'off',
+      '@typescript-eslint/no-var-requires': 'off',
+    },
   },
   {
     languageOptions: {
