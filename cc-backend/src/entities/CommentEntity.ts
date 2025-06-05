@@ -1,4 +1,4 @@
-import { BaseTableEntity } from "./BaseEntity";
+import { BaseTableEntity } from './BaseEntity';
 
 export interface ICommentEntity {
   commentId: string;
@@ -28,7 +28,7 @@ export class CommentEntity extends BaseTableEntity implements ICommentEntity {
   public downvotes: number;
 
   constructor(
-    data: Omit<ICommentEntity, "commentId"> & { commentId?: string }
+    data: Omit<ICommentEntity, 'commentId'> & { commentId?: string }
   ) {
     const commentId = data.commentId || crypto.randomUUID();
     super(`COMMENT_${data.reviewId}`, commentId);

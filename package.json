@@ -25,6 +25,9 @@
   "lint-staged":{
     "cc-frontend/**/*.{js,jsx,ts,tsx}":[
       "npm run lint --prefix cc-frontend"
+    ],
+    "cc-backend/**/*.{js,ts}":[
+      "npm run lint --prefix cc-backend"
     ]
   }
 }

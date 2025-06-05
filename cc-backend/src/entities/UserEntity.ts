@@ -1,4 +1,4 @@
-import { BaseTableEntity } from "./BaseEntity";
+import { BaseTableEntity } from './BaseEntity';
 
 export interface IUserEntity {
   userId: string;
@@ -25,9 +25,9 @@ export class UserEntity extends BaseTableEntity implements IUserEntity {
   public updatedAt: Date;
   public lastLoginAt?: Date;
 
-  constructor(data: Omit<IUserEntity, "userId"> & { userId?: string }) {
+  constructor(data: Omit<IUserEntity, 'userId'> & { userId?: string }) {
     const userId = data.userId || crypto.randomUUID();
-    super("USER", userId);
+    super('USER', userId);
 
     this.userId = userId;
     this.discordId = data.discordId;
@@ -50,7 +50,7 @@ export class UserDiscordLookupEntity extends BaseTableEntity {
   public userId: string;
 
   constructor(discordId: string, userId: string) {
-    super("USER_DISCORD", discordId);
+    super('USER_DISCORD', discordId);
     this.userId = userId;
   }
 }
