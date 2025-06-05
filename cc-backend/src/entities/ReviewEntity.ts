@@ -1,4 +1,4 @@
-import { BaseTableEntity } from "./BaseEntity";
+import { BaseTableEntity } from './BaseEntity';
 
 export interface IReviewEntity {
   reviewId: string;
@@ -35,7 +35,7 @@ export class ReviewEntity extends BaseTableEntity implements IReviewEntity {
   public upvotes: number;
   public downvotes: number;
 
-  constructor(data: Omit<IReviewEntity, "reviewId"> & { reviewId?: string }) {
+  constructor(data: Omit<IReviewEntity, 'reviewId'> & { reviewId?: string }) {
     const reviewId = data.reviewId || crypto.randomUUID();
     // Partition by course for efficient querying of course reviews
     super(`REVIEW_${data.courseId}`, reviewId);

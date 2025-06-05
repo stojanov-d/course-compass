@@ -1,10 +1,10 @@
-import { TableService } from "../services/TableService";
-import { TABLE_NAMES } from "../config/tableStorage";
-import { UserEntity } from "../entities/UserEntity";
-import { CourseEntity, CourseLookupEntity } from "../entities/CourseEntity";
-import { ProfessorEntity } from "../entities/ProfessorEntity";
-import { ReviewEntity } from "../entities/ReviewEntity";
-import { CommentEntity } from "../entities/CommentEntity";
+import { TableService } from '../services/TableService';
+import { TABLE_NAMES } from '../config/tableStorage';
+import { UserEntity } from '../entities/UserEntity';
+import { CourseEntity, CourseLookupEntity } from '../entities/CourseEntity';
+import { ProfessorEntity } from '../entities/ProfessorEntity';
+import { ReviewEntity } from '../entities/ReviewEntity';
+import { CommentEntity } from '../entities/CommentEntity';
 
 export class SeedDataGenerator {
   private tableService: TableService;
@@ -18,7 +18,7 @@ export class SeedDataGenerator {
   }
 
   async seedAll(): Promise<void> {
-    console.log("🌱 Starting seed data generation...");
+    console.log('🌱 Starting seed data generation...');
 
     await this.seedUsers();
     await this.seedProfessors();
@@ -26,49 +26,49 @@ export class SeedDataGenerator {
     await this.seedReviews();
     await this.seedComments();
 
-    console.log("✅ Seed data generation completed!");
+    console.log('✅ Seed data generation completed!');
   }
 
   private async seedUsers(): Promise<void> {
-    console.log("👥 Seeding users...");
+    console.log('👥 Seeding users...');
     const usersTable = this.tableService.getTableClient(TABLE_NAMES.USERS);
 
     const users = [
       new UserEntity({
-        discordId: "123456789012345678",
-        username: "john_doe",
-        email: "john.doe@finki.ukim.mk",
-        displayName: "John Doe",
-        avatarUrl: "https://example.com/avatar1.jpg",
+        discordId: '123456789012345678',
+        username: 'john_doe',
+        email: 'john.doe@finki.ukim.mk',
+        displayName: 'John Doe',
+        avatarUrl: 'https://example.com/avatar1.jpg',
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
         lastLoginAt: new Date(),
       }),
       new UserEntity({
-        discordId: "234567890123456789",
-        username: "jane_smith",
-        email: "jane.smith@finki.ukim.mk",
-        displayName: "Jane Smith",
+        discordId: '234567890123456789',
+        username: 'jane_smith',
+        email: 'jane.smith@finki.ukim.mk',
+        displayName: 'Jane Smith',
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
         lastLoginAt: new Date(),
       }),
       new UserEntity({
-        discordId: "345678901234567890",
-        username: "mike_wilson",
-        email: "mike.wilson@finki.ukim.mk",
-        displayName: "Mike Wilson",
+        discordId: '345678901234567890',
+        username: 'mike_wilson',
+        email: 'mike.wilson@finki.ukim.mk',
+        displayName: 'Mike Wilson',
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
       }),
       new UserEntity({
-        discordId: "456789012345678901",
-        username: "sarah_jones",
-        email: "sarah.jones@finki.ukim.mk",
-        displayName: "Sarah Jones",
+        discordId: '456789012345678901',
+        username: 'sarah_jones',
+        email: 'sarah.jones@finki.ukim.mk',
+        displayName: 'Sarah Jones',
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -87,48 +87,48 @@ export class SeedDataGenerator {
   }
 
   private async seedProfessors(): Promise<void> {
-    console.log("👨‍🏫 Seeding professors...");
+    console.log('👨‍🏫 Seeding professors...');
     const professorsTable = this.tableService.getTableClient(
       TABLE_NAMES.PROFESSORS
     );
 
     const professors = [
       new ProfessorEntity({
-        firstName: "Marija",
-        lastName: "Mihova",
-        email: "marija.mihova@finki.ukim.mk",
-        title: "Prof. Dr.",
-        department: "Computer Science",
+        firstName: 'Marija',
+        lastName: 'Mihova',
+        email: 'marija.mihova@finki.ukim.mk',
+        title: 'Prof. Dr.',
+        department: 'Computer Science',
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
       }),
       new ProfessorEntity({
-        firstName: "Vladimir",
-        lastName: "Trajkovik",
-        email: "vladimir.trajkovik@finki.ukim.mk",
-        title: "Prof. Dr.",
-        department: "Software Engineering",
+        firstName: 'Vladimir',
+        lastName: 'Trajkovik',
+        email: 'vladimir.trajkovik@finki.ukim.mk',
+        title: 'Prof. Dr.',
+        department: 'Software Engineering',
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
       }),
       new ProfessorEntity({
-        firstName: "Ana",
-        lastName: "Madevska",
-        email: "ana.madevska@finki.ukim.mk",
-        title: "Prof. Dr.",
-        department: "Information Systems",
+        firstName: 'Ana',
+        lastName: 'Madevska',
+        email: 'ana.madevska@finki.ukim.mk',
+        title: 'Prof. Dr.',
+        department: 'Information Systems',
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
       }),
       new ProfessorEntity({
-        firstName: "Dimitar",
-        lastName: "Trajanov",
-        email: "dimitar.trajanov@finki.ukim.mk",
-        title: "Prof. Dr.",
-        department: "Computer Science",
+        firstName: 'Dimitar',
+        lastName: 'Trajanov',
+        email: 'dimitar.trajanov@finki.ukim.mk',
+        title: 'Prof. Dr.',
+        department: 'Computer Science',
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -144,17 +144,17 @@ export class SeedDataGenerator {
   }
 
   private async seedCourses(): Promise<void> {
-    console.log("📚 Seeding courses...");
+    console.log('📚 Seeding courses...');
     const coursesTable = this.tableService.getTableClient(TABLE_NAMES.COURSES);
 
     const courses = [
       new CourseEntity({
-        courseCode: "CS101",
-        courseName: "Introduction to Programming",
+        courseCode: 'CS101',
+        courseName: 'Introduction to Programming',
         semester: 1,
         isRequired: true,
         credits: 6,
-        description: "Basic programming concepts and problem solving",
+        description: 'Basic programming concepts and problem solving',
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -162,12 +162,12 @@ export class SeedDataGenerator {
         totalReviews: 15,
       }),
       new CourseEntity({
-        courseCode: "CS201",
-        courseName: "Data Structures and Algorithms",
+        courseCode: 'CS201',
+        courseName: 'Data Structures and Algorithms',
         semester: 2,
         isRequired: true,
         credits: 6,
-        description: "Fundamental data structures and algorithms",
+        description: 'Fundamental data structures and algorithms',
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -175,12 +175,12 @@ export class SeedDataGenerator {
         totalReviews: 22,
       }),
       new CourseEntity({
-        courseCode: "SE301",
-        courseName: "Software Engineering",
+        courseCode: 'SE301',
+        courseName: 'Software Engineering',
         semester: 3,
         isRequired: true,
         credits: 6,
-        description: "Software development methodologies and practices",
+        description: 'Software development methodologies and practices',
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -188,12 +188,12 @@ export class SeedDataGenerator {
         totalReviews: 18,
       }),
       new CourseEntity({
-        courseCode: "DB401",
-        courseName: "Database Systems",
+        courseCode: 'DB401',
+        courseName: 'Database Systems',
         semester: 4,
         isRequired: true,
         credits: 6,
-        description: "Relational databases, SQL, and database design",
+        description: 'Relational databases, SQL, and database design',
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -201,12 +201,12 @@ export class SeedDataGenerator {
         totalReviews: 12,
       }),
       new CourseEntity({
-        courseCode: "WEB501",
-        courseName: "Web Technologies",
+        courseCode: 'WEB501',
+        courseName: 'Web Technologies',
         semester: 5,
         isRequired: false,
         credits: 6,
-        description: "Modern web development technologies and frameworks",
+        description: 'Modern web development technologies and frameworks',
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -232,7 +232,7 @@ export class SeedDataGenerator {
   }
 
   private async seedReviews(): Promise<void> {
-    console.log("📝 Seeding reviews...");
+    console.log('📝 Seeding reviews...');
     const reviewsTable = this.tableService.getTableClient(TABLE_NAMES.REVIEWS);
 
     const reviews = [
@@ -246,11 +246,11 @@ export class SeedDataGenerator {
         workload: 4,
         recommendsCourse: true,
         reviewText:
-          "Great introduction to programming! Prof. Mihova explains concepts very clearly and the assignments are well-structured.",
+          'Great introduction to programming! Prof. Mihova explains concepts very clearly and the assignments are well-structured.',
         isAnonymous: false,
         isApproved: true,
-        createdAt: new Date("2024-01-15"),
-        updatedAt: new Date("2024-01-15"),
+        createdAt: new Date('2024-01-15'),
+        updatedAt: new Date('2024-01-15'),
         upvotes: 8,
         downvotes: 1,
       }),
@@ -263,11 +263,11 @@ export class SeedDataGenerator {
         workload: 5,
         recommendsCourse: true,
         reviewText:
-          "Solid course but quite demanding. Make sure to practice coding regularly.",
+          'Solid course but quite demanding. Make sure to practice coding regularly.',
         isAnonymous: true,
         isApproved: true,
-        createdAt: new Date("2024-01-20"),
-        updatedAt: new Date("2024-01-20"),
+        createdAt: new Date('2024-01-20'),
+        updatedAt: new Date('2024-01-20'),
         upvotes: 5,
         downvotes: 0,
       }),
@@ -282,11 +282,11 @@ export class SeedDataGenerator {
         workload: 5,
         recommendsCourse: true,
         reviewText:
-          "Very challenging course but essential for computer science. Prof. Trajkovik is demanding but fair.",
+          'Very challenging course but essential for computer science. Prof. Trajkovik is demanding but fair.',
         isAnonymous: false,
         isApproved: true,
-        createdAt: new Date("2024-02-10"),
-        updatedAt: new Date("2024-02-10"),
+        createdAt: new Date('2024-02-10'),
+        updatedAt: new Date('2024-02-10'),
         upvotes: 12,
         downvotes: 2,
       }),
@@ -299,11 +299,11 @@ export class SeedDataGenerator {
         workload: 4,
         recommendsCourse: true,
         reviewText:
-          "Loved the algorithmic challenges. The course really makes you think differently about problem-solving.",
+          'Loved the algorithmic challenges. The course really makes you think differently about problem-solving.',
         isAnonymous: false,
         isApproved: true,
-        createdAt: new Date("2024-02-15"),
-        updatedAt: new Date("2024-02-15"),
+        createdAt: new Date('2024-02-15'),
+        updatedAt: new Date('2024-02-15'),
         upvotes: 6,
         downvotes: 0,
       }),
@@ -318,11 +318,11 @@ export class SeedDataGenerator {
         workload: 3,
         recommendsCourse: true,
         reviewText:
-          "Excellent practical course. Team projects are very well organized and you learn real-world skills.",
+          'Excellent practical course. Team projects are very well organized and you learn real-world skills.',
         isAnonymous: false,
         isApproved: true,
-        createdAt: new Date("2024-03-01"),
-        updatedAt: new Date("2024-03-01"),
+        createdAt: new Date('2024-03-01'),
+        updatedAt: new Date('2024-03-01'),
         upvotes: 15,
         downvotes: 1,
       }),
@@ -337,11 +337,11 @@ export class SeedDataGenerator {
         workload: 3,
         recommendsCourse: true,
         reviewText:
-          "Good coverage of database fundamentals. SQL exercises are helpful for building practical skills.",
+          'Good coverage of database fundamentals. SQL exercises are helpful for building practical skills.',
         isAnonymous: false,
         isApproved: true,
-        createdAt: new Date("2024-03-15"),
-        updatedAt: new Date("2024-03-15"),
+        createdAt: new Date('2024-03-15'),
+        updatedAt: new Date('2024-03-15'),
         upvotes: 7,
         downvotes: 1,
       }),
@@ -360,7 +360,7 @@ export class SeedDataGenerator {
   }
 
   private async seedComments(): Promise<void> {
-    console.log("💬 Seeding comments...");
+    console.log('💬 Seeding comments...');
     const commentsTable = this.tableService.getTableClient(
       TABLE_NAMES.COMMENTS
     );
@@ -374,8 +374,8 @@ export class SeedDataGenerator {
           "I completely agree! Prof. Mihova is one of the best teachers I've had.",
         isAnonymous: false,
         isApproved: true,
-        createdAt: new Date("2024-01-16"),
-        updatedAt: new Date("2024-01-16"),
+        createdAt: new Date('2024-01-16'),
+        updatedAt: new Date('2024-01-16'),
         upvotes: 3,
         downvotes: 0,
       }),
@@ -383,11 +383,11 @@ export class SeedDataGenerator {
         reviewId: this.seededReviews[0].reviewId,
         userId: this.seededUsers[2].userId,
         commentText:
-          "The assignments really helped me understand the concepts better.",
+          'The assignments really helped me understand the concepts better.',
         isAnonymous: true,
         isApproved: true,
-        createdAt: new Date("2024-01-17"),
-        updatedAt: new Date("2024-01-17"),
+        createdAt: new Date('2024-01-17'),
+        updatedAt: new Date('2024-01-17'),
         upvotes: 2,
         downvotes: 0,
       }),
@@ -397,11 +397,11 @@ export class SeedDataGenerator {
         reviewId: this.seededReviews[2].reviewId,
         userId: this.seededUsers[0].userId,
         commentText:
-          "Did you use any specific resources to study for this course?",
+          'Did you use any specific resources to study for this course?',
         isAnonymous: false,
         isApproved: true,
-        createdAt: new Date("2024-02-11"),
-        updatedAt: new Date("2024-02-11"),
+        createdAt: new Date('2024-02-11'),
+        updatedAt: new Date('2024-02-11'),
         upvotes: 1,
         downvotes: 0,
       }),
@@ -413,8 +413,8 @@ export class SeedDataGenerator {
           "I found 'Introduction to Algorithms' by Cormen very helpful as supplementary reading.",
         isAnonymous: false,
         isApproved: true,
-        createdAt: new Date("2024-02-12"),
-        updatedAt: new Date("2024-02-12"),
+        createdAt: new Date('2024-02-12'),
+        updatedAt: new Date('2024-02-12'),
         upvotes: 4,
         downvotes: 0,
       }),
@@ -423,11 +423,11 @@ export class SeedDataGenerator {
       new CommentEntity({
         reviewId: this.seededReviews[4].reviewId,
         userId: this.seededUsers[3].userId,
-        commentText: "What was your favorite part of the team project?",
+        commentText: 'What was your favorite part of the team project?',
         isAnonymous: false,
         isApproved: true,
-        createdAt: new Date("2024-03-02"),
-        updatedAt: new Date("2024-03-02"),
+        createdAt: new Date('2024-03-02'),
+        updatedAt: new Date('2024-03-02'),
         upvotes: 1,
         downvotes: 0,
       }),

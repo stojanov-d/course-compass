@@ -5,8 +5,8 @@ export interface BaseEntity {
 }
 
 export abstract class BaseTableEntity implements BaseEntity {
-  public partitionKey: string = "";
-  public rowKey: string = "";
+  public partitionKey: string = '';
+  public rowKey: string = '';
   public timestamp?: Date;
 
   constructor(partitionKey: string, rowKey: string) {

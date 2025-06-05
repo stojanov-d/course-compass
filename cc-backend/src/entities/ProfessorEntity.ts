@@ -1,4 +1,4 @@
-import { BaseTableEntity } from "./BaseEntity";
+import { BaseTableEntity } from './BaseEntity';
 
 export interface IProfessorEntity {
   professorId: string;
@@ -29,10 +29,10 @@ export class ProfessorEntity
   public updatedAt: Date;
 
   constructor(
-    data: Omit<IProfessorEntity, "professorId"> & { professorId?: string }
+    data: Omit<IProfessorEntity, 'professorId'> & { professorId?: string }
   ) {
     const professorId = data.professorId || crypto.randomUUID();
-    super("PROFESSOR", professorId);
+    super('PROFESSOR', professorId);
 
     this.professorId = professorId;
     this.firstName = data.firstName;

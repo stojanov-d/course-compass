@@ -1,5 +1,5 @@
-import { TableServiceClient, TableClient } from "@azure/data-tables";
-import { TABLE_NAMES } from "../config/tableStorage";
+import { TableServiceClient, TableClient } from '@azure/data-tables';
+import { TABLE_NAMES } from '../config/tableStorage';
 
 export class TableService {
   private tableServiceClient: TableServiceClient;
@@ -8,14 +8,14 @@ export class TableService {
   constructor() {
     this.connectionString =
       process.env.AZURE_STORAGE_CONNECTION_STRING ||
-      "UseDevelopmentStorage=true";
+      'UseDevelopmentStorage=true';
     this.tableServiceClient = TableServiceClient.fromConnectionString(
       this.connectionString
     );
   }
 
   async initializeTables(): Promise<void> {
-    console.log("🔄 Initializing tables...");
+    console.log('🔄 Initializing tables...');
 
     for (const tableName of Object.values(TABLE_NAMES)) {
       try {
@@ -32,7 +32,7 @@ export class TableService {
   }
 
   async deleteAllTables(): Promise<void> {
-    console.log("🗑️  Deleting all tables...");
+    console.log('🗑️  Deleting all tables...');
 
     for (const tableName of Object.values(TABLE_NAMES)) {
       try {

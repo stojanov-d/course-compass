@@ -1,4 +1,4 @@
-import { BaseTableEntity } from "./BaseEntity";
+import { BaseTableEntity } from './BaseEntity';
 
 export interface ICourseEntity {
   courseId: string;
@@ -29,7 +29,7 @@ export class CourseEntity extends BaseTableEntity implements ICourseEntity {
   public averageRating?: number;
   public totalReviews?: number;
 
-  constructor(data: Omit<ICourseEntity, "courseId"> & { courseId?: string }) {
+  constructor(data: Omit<ICourseEntity, 'courseId'> & { courseId?: string }) {
     const courseId = data.courseId || crypto.randomUUID();
     super(`COURSE_S${data.semester}`, courseId);
 
@@ -53,7 +53,7 @@ export class CourseLookupEntity extends BaseTableEntity {
   public semester: number;
 
   constructor(courseCode: string, courseId: string, semester: number) {
-    super("COURSE_CODE", courseCode);
+    super('COURSE_CODE', courseCode);
     this.courseId = courseId;
     this.semester = semester;
   }
