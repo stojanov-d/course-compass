@@ -1,9 +1,12 @@
 import { AUTH_CONFIG } from '../config/auth';
+import { UserRole } from '../entities/UserEntity';
 import crypto from 'crypto';
+
 export interface JwtPayload {
   userId: string;
   discordId: string;
   email: string;
+  role: UserRole;
   iat?: number;
   exp?: number;
 }

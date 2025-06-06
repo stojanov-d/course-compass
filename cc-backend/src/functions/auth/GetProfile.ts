@@ -1,6 +1,7 @@
 import { app, HttpRequest, HttpResponseInit } from '@azure/functions';
 import { requireAuth } from '../../middleware/authMiddleware';
 import { UserService } from '../../services/UserService';
+import { UserRole } from '../../entities/UserEntity';
 
 export async function GetProfile(
   request: HttpRequest
@@ -36,6 +37,8 @@ export async function GetProfile(
         displayName: user.displayName,
         email: user.email,
         avatarUrl: user.avatarUrl,
+        role: user.role,
+        isAdmin: user.role === UserRole.ADMIN,
         createdAt: user.createdAt,
         lastLoginAt: user.lastLoginAt,
       },

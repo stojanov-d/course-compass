@@ -1,6 +1,6 @@
 import { TableService } from '../services/TableService';
 import { TABLE_NAMES } from '../config/tableStorage';
-import { UserEntity } from '../entities/UserEntity';
+import { UserEntity, UserRole } from '../entities/UserEntity';
 import { CourseEntity, CourseLookupEntity } from '../entities/CourseEntity';
 import { ProfessorEntity } from '../entities/ProfessorEntity';
 import { ReviewEntity } from '../entities/ReviewEntity';
@@ -36,10 +36,11 @@ export class SeedDataGenerator {
     const users = [
       new UserEntity({
         discordId: '123456789012345678',
-        username: 'john_doe',
-        email: 'john.doe@finki.ukim.mk',
-        displayName: 'John Doe',
-        avatarUrl: 'https://example.com/avatar1.jpg',
+        username: 'admin_user',
+        email: 'admin@finki.ukim.mk',
+        displayName: 'System Administrator',
+        avatarUrl: 'https://example.com/admin-avatar.jpg',
+        role: UserRole.ADMIN,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -47,9 +48,10 @@ export class SeedDataGenerator {
       }),
       new UserEntity({
         discordId: '234567890123456789',
-        username: 'jane_smith',
-        email: 'jane.smith@finki.ukim.mk',
-        displayName: 'Jane Smith',
+        username: 'john_doe',
+        email: 'john.doe@finki.ukim.mk',
+        displayName: 'John Doe',
+        role: UserRole.USER,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -57,22 +59,34 @@ export class SeedDataGenerator {
       }),
       new UserEntity({
         discordId: '345678901234567890',
-        username: 'mike_wilson',
-        email: 'mike.wilson@finki.ukim.mk',
-        displayName: 'Mike Wilson',
+        username: 'jane_smith',
+        email: 'jane.smith@finki.ukim.mk',
+        displayName: 'Jane Smith',
+        role: UserRole.USER,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
       }),
       new UserEntity({
         discordId: '456789012345678901',
-        username: 'sarah_jones',
-        email: 'sarah.jones@finki.ukim.mk',
-        displayName: 'Sarah Jones',
+        username: 'mike_wilson',
+        email: 'mike.wilson@finki.ukim.mk',
+        displayName: 'Mike Wilson',
+        role: UserRole.USER,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
         lastLoginAt: new Date(),
+      }),
+      new UserEntity({
+        discordId: '567890123456789012',
+        username: 'sarah_jones',
+        email: 'sarah.jones@finki.ukim.mk',
+        displayName: 'Sarah Jones',
+        role: UserRole.USER,
+        isActive: false, // Example inactive user
+        createdAt: new Date(),
+        updatedAt: new Date(),
       }),
     ];
 
@@ -83,7 +97,9 @@ export class SeedDataGenerator {
       this.seededUsers.push(user);
     }
 
-    console.log(`✅ Seeded ${users.length} users`);
+    console.log(
+      `✅ Seeded ${users.length} users (1 admin, ${users.length - 1} regular users)`
+    );
   }
 
   private async seedProfessors(): Promise<void> {

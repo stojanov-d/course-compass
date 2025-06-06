@@ -7,6 +7,7 @@ import {
 import { DiscordAuthService } from '../../services/DiscordAuthService';
 import { UserService } from '../../services/UserService';
 import { JwtService } from '../../services/JwtService';
+import { UserRole } from '../../entities/UserEntity';
 
 export async function AuthCallback(
   request: HttpRequest,
@@ -46,6 +47,7 @@ export async function AuthCallback(
       userId: user.userId,
       discordId: user.discordId,
       email: user.email,
+      role: user.role,
     });
 
     return {
@@ -59,6 +61,8 @@ export async function AuthCallback(
           displayName: user.displayName,
           email: user.email,
           avatarUrl: user.avatarUrl,
+          role: user.role,
+          isAdmin: user.role === UserRole.ADMIN,
         },
       },
     };
