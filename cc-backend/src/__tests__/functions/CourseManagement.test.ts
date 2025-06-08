@@ -260,7 +260,7 @@ describe('Course Management Functions', () => {
 
     it('should create course successfully with valid data', async () => {
       const courseData = {
-        courseCode: 'CS101',
+        courseCode: 'F18L1W005',
         courseName: 'Introduction to Programming',
         semester: 1,
         isRequired: true,
@@ -287,7 +287,7 @@ describe('Course Management Functions', () => {
 
       expect(response.status).toBe(201);
       expect(response.jsonBody.success).toBe(true);
-      expect(response.jsonBody.course.courseCode).toBe('CS101');
+      expect(response.jsonBody.course.courseCode).toBe('F18L1W005');
     });
 
     it('should return 400 for invalid course code format', async () => {
@@ -308,7 +308,7 @@ describe('Course Management Functions', () => {
 
       expect(response.status).toBe(400);
       expect(response.jsonBody.error).toBe(
-        'Course code must be in format like CS101, SE301, etc.'
+        'Course code must be in format like F18L1W005, F19L2S012, etc.'
       );
     });
 
@@ -345,7 +345,7 @@ describe('Course Management Functions', () => {
 
     it('should handle service errors', async () => {
       const courseData = {
-        courseCode: 'CS101',
+        courseCode: 'F18L1W005',
         courseName: 'Introduction to Programming',
         semester: 1,
         isRequired: true,
@@ -389,7 +389,7 @@ describe('Course Management Functions', () => {
 
       const mockUpdatedCourse = {
         courseId: 'course-1',
-        courseCode: 'CS101',
+        courseCode: 'F18L1W005',
         courseName: 'Updated Course Name',
         description: 'Updated description',
         updatedAt: new Date(),
@@ -432,7 +432,7 @@ describe('Course Management Functions', () => {
 
       expect(response.status).toBe(400);
       expect(response.jsonBody.error).toBe(
-        'Course code must be in format like CS101, SE301, etc.'
+        'Course code must be in format like F18L1W005, F19L2S012, etc.'
       );
     });
 
