@@ -109,21 +109,24 @@ async function voteOnReview(
   reviewService: ReviewService
 ): Promise<HttpResponseInit> {
   try {
-    const updatedReview = await reviewService.voteOnReview(
+    const result = await reviewService.voteOnReview(
       reviewId,
       courseId,
       voteData
     );
 
+    const message = getVoteMessage(result.voteResult);
+
     return {
       status: 200,
       jsonBody: {
         success: true,
-        message: `Successfully ${voteData.voteType}d review`,
+        message,
         data: {
-          reviewId: updatedReview.reviewId,
-          upvotes: updatedReview.upvotes,
-          downvotes: updatedReview.downvotes,
+          reviewId: result.review.reviewId,
+          upvotes: result.review.upvotes,
+          downvotes: result.review.downvotes,
+          voteResult: result.voteResult,
         },
       },
     };
@@ -151,21 +154,24 @@ async function voteOnComment(
   reviewService: ReviewService
 ): Promise<HttpResponseInit> {
   try {
-    const updatedComment = await reviewService.voteOnComment(
+    const result = await reviewService.voteOnComment(
       commentId,
       reviewId,
       voteData
     );
 
+    const message = getVoteMessage(result.voteResult);
+
     return {
       status: 200,
       jsonBody: {
         success: true,
-        message: `Successfully ${voteData.voteType}d comment`,
+        message,
         data: {
-          commentId: updatedComment.commentId,
-          upvotes: updatedComment.upvotes,
-          downvotes: updatedComment.downvotes,
+          commentId: result.comment.commentId,
+          upvotes: result.comment.upvotes,
+          downvotes: result.comment.downvotes,
+          voteResult: result.voteResult,
         },
       },
     };
@@ -183,6 +189,19 @@ async function voteOnComment(
       };
     }
     throw error;
+  }
+}
+
+function getVoteMessage(voteResult: any): string {
+  switch (voteResult.action) {
+    case 'created':
+      return `Vote ${voteResult.currentVote} added`;
+    case 'updated':
+      return `Vote changed from ${voteResult.previousVote} to ${voteResult.currentVote}`;
+    case 'removed':
+      return `Vote ${voteResult.previousVote} removed`;
+    default:
+      return 'Vote processed';
   }
 }
 

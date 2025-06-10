@@ -1,6 +1,11 @@
 import { TableClient } from '@azure/data-tables';
 import { ReviewEntity, UserReviewEntity } from '../entities/ReviewEntity';
 import { CommentEntity } from '../entities/CommentEntity';
+import {
+  VoteEntity,
+  VoteTrackingData,
+  VoteResult,
+} from '../entities/VoteEntity';
 import { TableService } from './TableService';
 import { TABLE_NAMES } from '../config/tableStorage';
 
@@ -46,11 +51,13 @@ export class ReviewService {
   private tableService: TableService;
   private reviewsTable: TableClient;
   private commentsTable: TableClient;
+  private votesTable: TableClient;
 
   constructor() {
     this.tableService = new TableService();
     this.reviewsTable = this.tableService.getTableClient(TABLE_NAMES.REVIEWS);
     this.commentsTable = this.tableService.getTableClient(TABLE_NAMES.COMMENTS);
+    this.votesTable = this.tableService.getTableClient(TABLE_NAMES.VOTES);
   }
 
   async createReview(data: ReviewCreateData): Promise<ReviewEntity> {
@@ -362,7 +369,7 @@ export class ReviewService {
     reviewId: string,
     courseId: string,
     voteData: VoteData
-  ): Promise<ReviewEntity> {
+  ): Promise<{ review: ReviewEntity; voteResult: VoteResult }> {
     try {
       const review = await this.getReviewById(reviewId, courseId);
       if (!review) {
@@ -373,19 +380,25 @@ export class ReviewService {
         throw new Error('Cannot vote on your own review');
       }
 
-      // TODO: Implement logic to prevent multiple votes from the same user
-      const updatedReview = { ...review };
+      const voteTrackingData: VoteTrackingData = {
+        userId: voteData.userId,
+        voteType: voteData.voteType,
+        targetType: 'review',
+        targetId: reviewId,
+      };
 
-      if (voteData.voteType === 'upvote') {
-        updatedReview.upvotes += 1;
-      } else {
-        updatedReview.downvotes += 1;
-      }
+      const voteResult = await this.processVote(voteTrackingData);
 
-      updatedReview.updatedAt = new Date();
+      // Update review vote counts
+      const updatedReview = await this.updateReviewVoteCounts(
+        reviewId,
+        courseId
+      );
 
-      await this.reviewsTable.updateEntity(updatedReview, 'Replace');
-      return this.mapEntityToReview(updatedReview);
+      return {
+        review: updatedReview,
+        voteResult: voteResult,
+      };
     } catch (error: any) {
       console.error('Error voting on review:', error);
       throw new Error(`Failed to vote on review: ${error.message}`);
@@ -396,7 +409,7 @@ export class ReviewService {
     commentId: string,
     reviewId: string,
     voteData: VoteData
-  ): Promise<CommentEntity> {
+  ): Promise<{ comment: CommentEntity; voteResult: VoteResult }> {
     try {
       const partitionKey = `COMMENT_${reviewId}`;
       const entity = await this.commentsTable.getEntity(
@@ -413,21 +426,221 @@ export class ReviewService {
         throw new Error('Cannot vote on your own comment');
       }
 
-      const updatedComment = { ...comment };
+      const voteTrackingData: VoteTrackingData = {
+        userId: voteData.userId,
+        voteType: voteData.voteType,
+        targetType: 'comment',
+        targetId: commentId,
+      };
 
-      if (voteData.voteType === 'upvote') {
-        updatedComment.upvotes += 1;
-      } else {
-        updatedComment.downvotes += 1;
-      }
+      const voteResult = await this.processVote(voteTrackingData);
 
-      updatedComment.updatedAt = new Date();
+      const updatedComment = await this.updateCommentVoteCounts(
+        commentId,
+        reviewId
+      );
 
-      await this.commentsTable.updateEntity(updatedComment, 'Replace');
-      return this.mapEntityToComment(updatedComment);
+      return {
+        comment: updatedComment,
+        voteResult: voteResult,
+      };
     } catch (error: any) {
       console.error('Error voting on comment:', error);
       throw new Error(`Failed to vote on comment: ${error.message}`);
+    }
+  }
+
+  private async processVote(voteData: VoteTrackingData): Promise<VoteResult> {
+    const partitionKey = `VOTE_${voteData.targetType.toUpperCase()}_${voteData.targetId}`;
+    const rowKey = voteData.userId;
+
+    try {
+      const existingVote = await this.votesTable.getEntity(
+        partitionKey,
+        rowKey
+      );
+      const existingVoteEntity = this.mapEntityToVote(existingVote);
+
+      if (existingVoteEntity.voteType === voteData.voteType) {
+        await this.votesTable.deleteEntity(partitionKey, rowKey);
+
+        const votes = await this.getVotesByPartitionKey(partitionKey);
+        const upvotes = votes.filter(
+          (vote) => vote.voteType === 'upvote'
+        ).length;
+        const downvotes = votes.filter(
+          (vote) => vote.voteType === 'downvote'
+        ).length;
+
+        return {
+          success: true,
+          action: 'removed',
+          previousVote: existingVoteEntity.voteType,
+          currentVote: null,
+          upvotes,
+          downvotes,
+        };
+      } else {
+        const updatedVote = new VoteEntity({
+          targetType: voteData.targetType,
+          targetId: voteData.targetId,
+          voteType: voteData.voteType,
+          userId: voteData.userId,
+          createdAt: existingVoteEntity.createdAt,
+          updatedAt: new Date(),
+        });
+
+        await this.votesTable.updateEntity(updatedVote, 'Replace');
+
+        const votes = await this.getVotesByPartitionKey(partitionKey);
+        const upvotes = votes.filter(
+          (vote) => vote.voteType === 'upvote'
+        ).length;
+        const downvotes = votes.filter(
+          (vote) => vote.voteType === 'downvote'
+        ).length;
+
+        return {
+          success: true,
+          action: 'updated',
+          previousVote: existingVoteEntity.voteType,
+          currentVote: voteData.voteType,
+          upvotes,
+          downvotes,
+        };
+      }
+    } catch (error: any) {
+      if (error.statusCode === 404) {
+        const newVote = new VoteEntity({
+          targetType: voteData.targetType,
+          targetId: voteData.targetId,
+          voteType: voteData.voteType,
+          userId: voteData.userId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+
+        await this.votesTable.createEntity(newVote);
+
+        const votes = await this.getVotesByPartitionKey(partitionKey);
+        const upvotes = votes.filter(
+          (vote) => vote.voteType === 'upvote'
+        ).length;
+        const downvotes = votes.filter(
+          (vote) => vote.voteType === 'downvote'
+        ).length;
+
+        return {
+          success: true,
+          action: 'created',
+          previousVote: null,
+          currentVote: voteData.voteType,
+          upvotes,
+          downvotes,
+        };
+      }
+      throw error;
+    }
+  }
+
+  private async updateReviewVoteCounts(
+    reviewId: string,
+    courseId: string
+  ): Promise<ReviewEntity> {
+    const partitionKey = `VOTE_REVIEW_${reviewId}`;
+
+    const votes = await this.getVotesByPartitionKey(partitionKey);
+    const upvotes = votes.filter((vote) => vote.voteType === 'upvote').length;
+    const downvotes = votes.filter(
+      (vote) => vote.voteType === 'downvote'
+    ).length;
+
+    const review = await this.getReviewById(reviewId, courseId);
+    if (!review) {
+      throw new Error('Review not found');
+    }
+
+    const updatedReview = {
+      ...review,
+      upvotes,
+      downvotes,
+      updatedAt: new Date(),
+    };
+
+    await this.reviewsTable.updateEntity(updatedReview, 'Replace');
+    return this.mapEntityToReview(updatedReview);
+  }
+
+  private async updateCommentVoteCounts(
+    commentId: string,
+    reviewId: string
+  ): Promise<CommentEntity> {
+    const partitionKey = `VOTE_COMMENT_${commentId}`;
+
+    const votes = await this.getVotesByPartitionKey(partitionKey);
+    const upvotes = votes.filter((vote) => vote.voteType === 'upvote').length;
+    const downvotes = votes.filter(
+      (vote) => vote.voteType === 'downvote'
+    ).length;
+
+    const commentPartitionKey = `COMMENT_${reviewId}`;
+    const entity = await this.commentsTable.getEntity(
+      commentPartitionKey,
+      commentId
+    );
+    const comment = this.mapEntityToComment(entity);
+
+    const updatedComment = {
+      ...comment,
+      upvotes,
+      downvotes,
+      updatedAt: new Date(),
+    };
+
+    await this.commentsTable.updateEntity(updatedComment, 'Replace');
+    return this.mapEntityToComment(updatedComment);
+  }
+
+  private async getVotesByPartitionKey(
+    partitionKey: string
+  ): Promise<VoteEntity[]> {
+    const votes: VoteEntity[] = [];
+    const entities = this.votesTable.listEntities({
+      queryOptions: { filter: `PartitionKey eq '${partitionKey}'` },
+    });
+
+    for await (const entity of entities) {
+      votes.push(this.mapEntityToVote(entity));
+    }
+
+    return votes;
+  }
+
+  private mapEntityToVote(entity: any): VoteEntity {
+    return new VoteEntity({
+      targetType: entity.targetType,
+      targetId: entity.targetId,
+      voteType: entity.voteType,
+      userId: entity.userId,
+      createdAt: new Date(entity.createdAt),
+      updatedAt: new Date(entity.updatedAt),
+    });
+  }
+
+  async getUserVote(
+    userId: string,
+    targetType: 'review' | 'comment',
+    targetId: string
+  ): Promise<VoteEntity | null> {
+    try {
+      const partitionKey = `VOTE_${targetType.toUpperCase()}_${targetId}`;
+      const entity = await this.votesTable.getEntity(partitionKey, userId);
+      return this.mapEntityToVote(entity);
+    } catch (error: any) {
+      if (error.statusCode === 404) {
+        return null;
+      }
+      throw error;
     }
   }
 
