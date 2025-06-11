@@ -1,11 +1,13 @@
 import { HttpRequest } from '@azure/functions';
 import { JwtService } from '../services/JwtService';
 import { UserService } from '../services/UserService';
+import { UserRole } from '../entities/UserEntity';
 
 export interface AuthUser {
   userId: string;
   discordId: string;
   email: string;
+  role: UserRole;
 }
 
 export interface AuthResult {
@@ -47,10 +49,55 @@ export async function requireAuth(request: HttpRequest): Promise<AuthResult> {
         userId: payload.userId,
         discordId: payload.discordId,
         email: payload.email,
+        role: user.role,
       },
     };
   } catch (error: any) {
     console.error('Auth middleware error:', error);
     return { isValid: false, error: 'Authentication failed' };
   }
+}
+
+export async function requireRole(
+  request: HttpRequest,
+  requiredRole: UserRole
+): Promise<AuthResult> {
+  const authResult = await requireAuth(request);
+
+  if (!authResult.isValid || !authResult.user) {
+    return authResult;
+  }
+
+  if (authResult.user.role !== requiredRole) {
+    return {
+      isValid: false,
+      error: `Access denied. Required role: ${requiredRole}`,
+    };
+  }
+
+  return authResult;
+}
+
+export async function requireAdmin(request: HttpRequest): Promise<AuthResult> {
+  return requireRole(request, UserRole.ADMIN);
+}
+
+export async function requireAnyRole(
+  request: HttpRequest,
+  allowedRoles: UserRole[]
+): Promise<AuthResult> {
+  const authResult = await requireAuth(request);
+
+  if (!authResult.isValid || !authResult.user) {
+    return authResult;
+  }
+
+  if (!allowedRoles.includes(authResult.user.role)) {
+    return {
+      isValid: false,
+      error: `Access denied. Required roles: ${allowedRoles.join(', ')}`,
+    };
+  }
+
+  return authResult;
 }

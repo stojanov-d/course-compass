@@ -1,5 +1,10 @@
 import { BaseTableEntity } from './BaseEntity';
 
+export enum UserRole {
+  USER = 'user',
+  ADMIN = 'admin',
+}
+
 export interface IUserEntity {
   userId: string;
   discordId: string;
@@ -7,6 +12,7 @@ export interface IUserEntity {
   email: string;
   displayName: string;
   avatarUrl?: string;
+  role: UserRole;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -20,6 +26,7 @@ export class UserEntity extends BaseTableEntity implements IUserEntity {
   public email: string;
   public displayName: string;
   public avatarUrl?: string;
+  public role: UserRole;
   public isActive: boolean;
   public createdAt: Date;
   public updatedAt: Date;
@@ -35,6 +42,7 @@ export class UserEntity extends BaseTableEntity implements IUserEntity {
     this.email = data.email;
     this.displayName = data.displayName;
     this.avatarUrl = data.avatarUrl;
+    this.role = data.role || UserRole.USER;
     this.isActive = data.isActive;
     this.createdAt = data.createdAt;
     this.updatedAt = data.updatedAt;
@@ -43,6 +51,14 @@ export class UserEntity extends BaseTableEntity implements IUserEntity {
 
   public toDiscordLookupEntity(): UserDiscordLookupEntity {
     return new UserDiscordLookupEntity(this.discordId, this.userId);
+  }
+
+  public isAdmin(): boolean {
+    return this.role === UserRole.ADMIN;
+  }
+
+  public hasRole(role: UserRole): boolean {
+    return this.role === role;
   }
 }
 

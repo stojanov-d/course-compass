@@ -1,10 +1,11 @@
 import { TableService } from '../services/TableService';
 import { TABLE_NAMES } from '../config/tableStorage';
-import { UserEntity } from '../entities/UserEntity';
+import { UserEntity, UserRole } from '../entities/UserEntity';
 import { CourseEntity, CourseLookupEntity } from '../entities/CourseEntity';
 import { ProfessorEntity } from '../entities/ProfessorEntity';
 import { ReviewEntity } from '../entities/ReviewEntity';
 import { CommentEntity } from '../entities/CommentEntity';
+import { VoteEntity } from '../entities/VoteEntity';
 
 export class SeedDataGenerator {
   private tableService: TableService;
@@ -25,6 +26,7 @@ export class SeedDataGenerator {
     await this.seedCourses();
     await this.seedReviews();
     await this.seedComments();
+    await this.seedVotes();
 
     console.log('✅ Seed data generation completed!');
   }
@@ -36,10 +38,11 @@ export class SeedDataGenerator {
     const users = [
       new UserEntity({
         discordId: '123456789012345678',
-        username: 'john_doe',
-        email: 'john.doe@finki.ukim.mk',
-        displayName: 'John Doe',
-        avatarUrl: 'https://example.com/avatar1.jpg',
+        username: 'admin_user',
+        email: 'admin@finki.ukim.mk',
+        displayName: 'System Administrator',
+        avatarUrl: 'https://example.com/admin-avatar.jpg',
+        role: UserRole.ADMIN,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -47,9 +50,10 @@ export class SeedDataGenerator {
       }),
       new UserEntity({
         discordId: '234567890123456789',
-        username: 'jane_smith',
-        email: 'jane.smith@finki.ukim.mk',
-        displayName: 'Jane Smith',
+        username: 'john_doe',
+        email: 'john.doe@finki.ukim.mk',
+        displayName: 'John Doe',
+        role: UserRole.USER,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -57,22 +61,34 @@ export class SeedDataGenerator {
       }),
       new UserEntity({
         discordId: '345678901234567890',
-        username: 'mike_wilson',
-        email: 'mike.wilson@finki.ukim.mk',
-        displayName: 'Mike Wilson',
+        username: 'jane_smith',
+        email: 'jane.smith@finki.ukim.mk',
+        displayName: 'Jane Smith',
+        role: UserRole.USER,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
       }),
       new UserEntity({
         discordId: '456789012345678901',
-        username: 'sarah_jones',
-        email: 'sarah.jones@finki.ukim.mk',
-        displayName: 'Sarah Jones',
+        username: 'mike_wilson',
+        email: 'mike.wilson@finki.ukim.mk',
+        displayName: 'Mike Wilson',
+        role: UserRole.USER,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
         lastLoginAt: new Date(),
+      }),
+      new UserEntity({
+        discordId: '567890123456789012',
+        username: 'sarah_jones',
+        email: 'sarah.jones@finki.ukim.mk',
+        displayName: 'Sarah Jones',
+        role: UserRole.USER,
+        isActive: false, // Example inactive user
+        createdAt: new Date(),
+        updatedAt: new Date(),
       }),
     ];
 
@@ -83,7 +99,9 @@ export class SeedDataGenerator {
       this.seededUsers.push(user);
     }
 
-    console.log(`✅ Seeded ${users.length} users`);
+    console.log(
+      `✅ Seeded ${users.length} users (1 admin, ${users.length - 1} regular users)`
+    );
   }
 
   private async seedProfessors(): Promise<void> {
@@ -368,6 +386,7 @@ export class SeedDataGenerator {
     const comments = [
       // Comments on first review
       new CommentEntity({
+        commentId: 'comment-1',
         reviewId: this.seededReviews[0].reviewId,
         userId: this.seededUsers[1].userId,
         commentText:
@@ -380,6 +399,7 @@ export class SeedDataGenerator {
         downvotes: 0,
       }),
       new CommentEntity({
+        commentId: 'comment-2',
         reviewId: this.seededReviews[0].reviewId,
         userId: this.seededUsers[2].userId,
         commentText:
@@ -394,6 +414,7 @@ export class SeedDataGenerator {
 
       // Comments on CS201 review
       new CommentEntity({
+        commentId: 'comment-3',
         reviewId: this.seededReviews[2].reviewId,
         userId: this.seededUsers[0].userId,
         commentText:
@@ -406,9 +427,10 @@ export class SeedDataGenerator {
         downvotes: 0,
       }),
       new CommentEntity({
+        commentId: 'comment-4',
         reviewId: this.seededReviews[2].reviewId,
         userId: this.seededUsers[2].userId,
-        parentCommentId: undefined, // This would be the ID of the previous comment for nested replies
+        parentCommentId: 'comment-3', // Reply to the previous comment
         commentText:
           "I found 'Introduction to Algorithms' by Cormen very helpful as supplementary reading.",
         isAnonymous: false,
@@ -421,6 +443,7 @@ export class SeedDataGenerator {
 
       // Comments on SE301 review
       new CommentEntity({
+        commentId: 'comment-5',
         reviewId: this.seededReviews[4].reviewId,
         userId: this.seededUsers[3].userId,
         commentText: 'What was your favorite part of the team project?',
@@ -438,5 +461,175 @@ export class SeedDataGenerator {
     }
 
     console.log(`✅ Seeded ${comments.length} comments`);
+  }
+
+  private async seedVotes(): Promise<void> {
+    console.log('🗳️ Seeding votes...');
+    const votesTable = this.tableService.getTableClient(TABLE_NAMES.VOTES);
+
+    const votes = [
+      // Votes for CS101 - John Doe's review (upvotes: 8, downvotes: 1)
+      ...this.createVotesForTarget('review', this.seededReviews[0].reviewId, [
+        { userId: this.seededUsers[1].userId, voteType: 'upvote' },
+        { userId: this.seededUsers[2].userId, voteType: 'upvote' },
+        { userId: this.seededUsers[3].userId, voteType: 'upvote' },
+        { userId: 'user-demo-1', voteType: 'upvote' },
+        { userId: 'user-demo-2', voteType: 'upvote' },
+        { userId: 'user-demo-3', voteType: 'upvote' },
+        { userId: 'user-demo-4', voteType: 'upvote' },
+        { userId: 'user-demo-5', voteType: 'upvote' },
+        { userId: 'user-demo-6', voteType: 'downvote' },
+      ]),
+
+      // Votes for CS101 - Jane Smith's review (upvotes: 5, downvotes: 0)
+      ...this.createVotesForTarget('review', this.seededReviews[1].reviewId, [
+        { userId: this.seededUsers[0].userId, voteType: 'upvote' },
+        { userId: this.seededUsers[2].userId, voteType: 'upvote' },
+        { userId: this.seededUsers[3].userId, voteType: 'upvote' },
+        { userId: 'user-demo-1', voteType: 'upvote' },
+        { userId: 'user-demo-2', voteType: 'upvote' },
+      ]),
+
+      // Votes for CS201 - Mike Wilson's review (upvotes: 12, downvotes: 2)
+      ...this.createVotesForTarget('review', this.seededReviews[2].reviewId, [
+        { userId: this.seededUsers[0].userId, voteType: 'upvote' },
+        { userId: this.seededUsers[1].userId, voteType: 'upvote' },
+        { userId: this.seededUsers[3].userId, voteType: 'upvote' },
+        { userId: 'user-demo-1', voteType: 'upvote' },
+        { userId: 'user-demo-2', voteType: 'upvote' },
+        { userId: 'user-demo-3', voteType: 'upvote' },
+        { userId: 'user-demo-4', voteType: 'upvote' },
+        { userId: 'user-demo-5', voteType: 'upvote' },
+        { userId: 'user-demo-6', voteType: 'upvote' },
+        { userId: 'user-demo-7', voteType: 'upvote' },
+        { userId: 'user-demo-8', voteType: 'upvote' },
+        { userId: 'user-demo-9', voteType: 'upvote' },
+        { userId: 'user-demo-10', voteType: 'downvote' },
+        { userId: 'user-demo-11', voteType: 'downvote' },
+      ]),
+
+      // Votes for CS201 - Sarah Jones review (upvotes: 6, downvotes: 0)
+      ...this.createVotesForTarget('review', this.seededReviews[3].reviewId, [
+        { userId: this.seededUsers[0].userId, voteType: 'upvote' },
+        { userId: this.seededUsers[1].userId, voteType: 'upvote' },
+        { userId: this.seededUsers[2].userId, voteType: 'upvote' },
+        { userId: 'user-demo-1', voteType: 'upvote' },
+        { userId: 'user-demo-2', voteType: 'upvote' },
+        { userId: 'user-demo-3', voteType: 'upvote' },
+      ]),
+
+      // Votes for SE301 - John Doe's review (upvotes: 15, downvotes: 1)
+      ...this.createVotesForTarget('review', this.seededReviews[4].reviewId, [
+        { userId: this.seededUsers[1].userId, voteType: 'upvote' },
+        { userId: this.seededUsers[2].userId, voteType: 'upvote' },
+        { userId: this.seededUsers[3].userId, voteType: 'upvote' },
+        { userId: 'user-demo-1', voteType: 'upvote' },
+        { userId: 'user-demo-2', voteType: 'upvote' },
+        { userId: 'user-demo-3', voteType: 'upvote' },
+        { userId: 'user-demo-4', voteType: 'upvote' },
+        { userId: 'user-demo-5', voteType: 'upvote' },
+        { userId: 'user-demo-6', voteType: 'upvote' },
+        { userId: 'user-demo-7', voteType: 'upvote' },
+        { userId: 'user-demo-8', voteType: 'upvote' },
+        { userId: 'user-demo-9', voteType: 'upvote' },
+        { userId: 'user-demo-10', voteType: 'upvote' },
+        { userId: 'user-demo-11', voteType: 'upvote' },
+        { userId: 'user-demo-12', voteType: 'upvote' },
+        { userId: 'user-demo-13', voteType: 'downvote' },
+      ]),
+
+      // Votes for DB401 - Jane Smith's review (upvotes: 7, downvotes: 1)
+      ...this.createVotesForTarget('review', this.seededReviews[5].reviewId, [
+        { userId: this.seededUsers[0].userId, voteType: 'upvote' },
+        { userId: this.seededUsers[2].userId, voteType: 'upvote' },
+        { userId: this.seededUsers[3].userId, voteType: 'upvote' },
+        { userId: 'user-demo-1', voteType: 'upvote' },
+        { userId: 'user-demo-2', voteType: 'upvote' },
+        { userId: 'user-demo-3', voteType: 'upvote' },
+        { userId: 'user-demo-4', voteType: 'upvote' },
+        { userId: 'user-demo-5', voteType: 'downvote' },
+      ]),
+    ];
+
+    // Add comment votes based on existing upvotes/downvotes
+    const commentVotes = this.createCommentVotes();
+    votes.push(...commentVotes);
+
+    for (const vote of votes) {
+      await votesTable.createEntity(vote);
+    }
+
+    console.log(
+      `✅ Seeded ${votes.length} votes (${votes.filter((v) => v.targetType === 'review').length} review votes, ${votes.filter((v) => v.targetType === 'comment').length} comment votes)`
+    );
+  }
+
+  private createVotesForTarget(
+    targetType: 'review' | 'comment',
+    targetId: string,
+    userVotes: Array<{ userId: string; voteType: 'upvote' | 'downvote' }>
+  ): VoteEntity[] {
+    return userVotes.map(
+      ({ userId, voteType }) =>
+        new VoteEntity({
+          targetType,
+          targetId,
+          voteType,
+          userId,
+          createdAt: new Date(
+            Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000
+          ), // Random date within last 30 days
+          updatedAt: new Date(
+            Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000
+          ),
+        })
+    );
+  }
+
+  private createCommentVotes(): VoteEntity[] {
+    // Comment votes need to be created based on the seeded comments
+    // We'll create votes for comments that match their upvotes/downvotes counts
+    const commentVotes: VoteEntity[] = [];
+
+    // Comment 1: upvotes: 3, downvotes: 0 (comment on first review)
+    const comment1Votes = this.createVotesForTarget('comment', 'comment-1', [
+      { userId: this.seededUsers[0].userId, voteType: 'upvote' },
+      { userId: this.seededUsers[2].userId, voteType: 'upvote' },
+      { userId: this.seededUsers[3].userId, voteType: 'upvote' },
+    ]);
+
+    // Comment 2: upvotes: 2, downvotes: 0 (anonymous comment on first review)
+    const comment2Votes = this.createVotesForTarget('comment', 'comment-2', [
+      { userId: this.seededUsers[0].userId, voteType: 'upvote' },
+      { userId: this.seededUsers[3].userId, voteType: 'upvote' },
+    ]);
+
+    // Comment 3: upvotes: 1, downvotes: 0 (comment on CS201 review)
+    const comment3Votes = this.createVotesForTarget('comment', 'comment-3', [
+      { userId: this.seededUsers[1].userId, voteType: 'upvote' },
+    ]);
+
+    // Comment 4: upvotes: 4, downvotes: 0 (reply comment on CS201 review)
+    const comment4Votes = this.createVotesForTarget('comment', 'comment-4', [
+      { userId: this.seededUsers[0].userId, voteType: 'upvote' },
+      { userId: this.seededUsers[1].userId, voteType: 'upvote' },
+      { userId: this.seededUsers[3].userId, voteType: 'upvote' },
+      { userId: 'user-demo-1', voteType: 'upvote' },
+    ]);
+
+    // Comment 5: upvotes: 1, downvotes: 0 (comment on SE301 review)
+    const comment5Votes = this.createVotesForTarget('comment', 'comment-5', [
+      { userId: this.seededUsers[2].userId, voteType: 'upvote' },
+    ]);
+
+    commentVotes.push(
+      ...comment1Votes,
+      ...comment2Votes,
+      ...comment3Votes,
+      ...comment4Votes,
+      ...comment5Votes
+    );
+
+    return commentVotes;
   }
 }
