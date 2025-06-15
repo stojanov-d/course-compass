@@ -1,5 +1,5 @@
 export interface Subject {
-  code: string;
+  code: string[];
   name: string;
   link?: string;
   studyPrograms: Array<{

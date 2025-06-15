@@ -1,15 +1,15 @@
 import * as cheerio from "cheerio";
 import axios from "axios";
 import { Subject } from "./types";
+import { config } from "./config";
 
 async function getProgrameLinks(): Promise<{ url: string; name: string }[]> {
-  const url = "https://www.finki.ukim.mk/mk/dodiplomski-studii";
+  const scraperConfig = config.scrapers["2023"];
   const baseUrl = "https://www.finki.ukim.mk";
 
   try {
-    const response = await axios.get(url);
-    const html = response.data;
-    const $ = cheerio.load(html);
+    const response = await axios.get(scraperConfig.baseUrl);
+    const $ = cheerio.load(response.data);
 
     return $(
       "#block-views-akreditacija-2023-block-1 > div > div > div > div > div > ul > li > div > a"
@@ -23,7 +23,6 @@ async function getProgrameLinks(): Promise<{ url: string; name: string }[]> {
       .filter(Boolean)
       .filter((program) => !program.url.endsWith("/en"));
   } catch (error) {
-    console.error("Error getting program links:", error);
     return [];
   }
 }
@@ -36,12 +35,9 @@ async function scrapeSubjectsFromPage(
     if (url.endsWith("/en")) return [];
 
     const response = await axios.get(url);
-    const html = response.data;
-    const $ = cheerio.load(html);
+    const $ = cheerio.load(response.data);
     const subjects: Subject[] = [];
     const cleanProgramName = programName.replace(/\s+/g, " ").trim();
-
-    // Scrape mandatory subjects
     $("table.table.table-striped.table-bordered").each((_, table) => {
       const $table = $(table);
       const hasMandatoryHeader = $table
@@ -62,10 +58,9 @@ async function scrapeSubjectsFromPage(
             const anchor = $(tds[1]).find("a");
             const subjectName = anchor.text().trim();
             const subjectLink = anchor.attr("href");
-
             if (subjectCode.startsWith("F23") && subjectName) {
               subjects.push({
-                code: subjectCode,
+                code: [subjectCode],
                 name: subjectName,
                 link: subjectLink
                   ? `https://www.finki.ukim.mk${subjectLink}`
@@ -78,7 +73,6 @@ async function scrapeSubjectsFromPage(
       }
     });
 
-    // Scrape elective subjects
     $("h3").each((_, heading) => {
       const $heading = $(heading);
       const headingText = $heading.text().trim();
@@ -98,10 +92,9 @@ async function scrapeSubjectsFromPage(
             if (tds.length >= 2) {
               const subjectCode = $(tds[0]).text().trim();
               const subjectName = $(tds[1]).text().trim();
-
               if (subjectCode.startsWith("F23") && subjectName) {
                 subjects.push({
-                  code: subjectCode,
+                  code: [subjectCode],
                   name: subjectName,
                   link: undefined,
                   studyPrograms: [{ name: cleanProgramName, type: "Elective" }],
@@ -115,7 +108,6 @@ async function scrapeSubjectsFromPage(
 
     return subjects;
   } catch (error) {
-    console.error(`Error scraping subjects from ${url}:`, error);
     return [];
   }
 }
@@ -129,48 +121,54 @@ export class SubjectsScraper_2023 {
     }
     return SubjectsScraper_2023.instance;
   }
-
   public async scrapeSubjects(): Promise<Subject[]> {
-    try {
-      const programs = await getProgrameLinks();
-      const subjectsMap = new Map<string, Subject>();
+    const scraperConfig = config.scrapers["2023"];
 
-      for (const program of programs) {
-        const subjects = await scrapeSubjectsFromPage(
-          program.url,
-          program.name
-        );
-
-        for (const subject of subjects) {
-          const existingSubject = subjectsMap.get(subject.code);
-
-          if (existingSubject) {
-            const cleanProgramName = program.name.replace(/\s+/g, " ").trim();
-            const existingProgram = existingSubject.studyPrograms.find(
-              (sp) => sp.name === cleanProgramName
-            );
-
-            if (!existingProgram) {
-              existingSubject.studyPrograms.push(...subject.studyPrograms);
-            }
-          } else {
-            subjectsMap.set(subject.code, subject);
-          }
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
-
-      return Array.from(subjectsMap.values()).map((subject) => ({
-        ...subject,
-        studyPrograms: subject.studyPrograms.map((sp) => ({
-          name: sp.name.replace(/\s+/g, " ").trim(),
-          type: sp.type,
-        })),
-      }));
-    } catch (error) {
-      console.error("Error scraping subjects:", error);
+    if (!scraperConfig.enabled) {
       return [];
     }
+
+    const programs = await getProgrameLinks();
+    const subjectsMap = new Map<string, Subject>();
+
+    for (const program of programs) {
+      const subjects = await scrapeSubjectsFromPage(program.url, program.name);
+
+      for (const subject of subjects) {
+        const existingSubject = subjectsMap.get(subject.name);
+
+        if (existingSubject) {
+          const existingCodes = new Set(existingSubject.code);
+          for (const code of subject.code) {
+            if (!existingCodes.has(code)) {
+              existingSubject.code.push(code);
+            }
+          }
+
+          const cleanProgramName = program.name.replace(/\s+/g, " ").trim();
+          const existingProgram = existingSubject.studyPrograms.find(
+            (sp) => sp.name === cleanProgramName
+          );
+
+          if (!existingProgram) {
+            existingSubject.studyPrograms.push(...subject.studyPrograms);
+          }
+        } else {
+          subjectsMap.set(subject.name, subject);
+        }
+      }
+
+      await new Promise((resolve) =>
+        setTimeout(resolve, scraperConfig.delays.betweenPrograms)
+      );
+    }
+
+    return Array.from(subjectsMap.values()).map((subject) => ({
+      ...subject,
+      studyPrograms: subject.studyPrograms.map((sp) => ({
+        name: sp.name.replace(/\s+/g, " ").trim(),
+        type: sp.type,
+      })),
+    }));
   }
 }

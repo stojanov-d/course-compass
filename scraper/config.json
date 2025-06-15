@@ -1,0 +1,53 @@
+{
+  "scrapers": {
+    "2018": {
+      "enabled": true,
+      "programUrls": [
+        "https://www.finki.ukim.mk/mk/content/%D0%B8%D0%BD%D1%82%D0%B5%D1%80%D0%BD%D0%B5%D1%82-%D0%BC%D1%80%D0%B5%D0%B6%D0%B8-%D0%B8-%D0%B1%D0%B5%D0%B7%D0%B1%D0%B5%D0%B4%D0%BD%D0%BE%D1%81%D1%82",
+        "https://www.finki.ukim.mk/mk/content/%D0%BA%D0%BE%D0%BC%D0%BF%D1%98%D1%83%D1%82%D0%B5%D1%80%D1%81%D0%BA%D0%B0-%D0%B5%D0%B4%D1%83%D0%BA%D0%B0%D1%86%D0%B8%D1%98%D0%B0",
+        "https://www.finki.ukim.mk/mk/content/%D0%BA%D0%BE%D0%BC%D0%BF%D1%98%D1%83%D1%82%D0%B5%D1%80%D1%81%D0%BA%D0%B8-%D0%BD%D0%B0%D1%83%D0%BA%D0%B8",
+        "https://www.finki.ukim.mk/mk/content/%D0%BA%D0%BE%D0%BC%D0%BF%D1%98%D1%83%D1%82%D0%B5%D1%80%D1%81%D0%BA%D0%BE-%D0%B8%D0%BD%D0%B6%D0%B5%D0%BD%D0%B5%D1%80%D1%81%D1%82%D0%B2%D0%BE",
+        "https://www.finki.ukim.mk/mk/content/%D0%BF%D1%80%D0%B8%D0%BC%D0%B5%D0%BD%D0%B0-%D0%BD%D0%B0-%D0%B8%D0%BD%D1%84%D0%BE%D1%80%D0%BC%D0%B0%D1%86%D0%B8%D1%81%D0%BA%D0%B8-%D1%82%D0%B5%D1%85%D0%BD%D0%BE%D0%BB%D0%BE%D0%B3%D0%B8%D0%B8",
+        "https://www.finki.ukim.mk/mk/content/%D1%81%D0%BE%D1%84%D1%82%D0%B2%D0%B5%D1%80%D1%81%D0%BA%D0%BE-%D0%B8%D0%BD%D0%B6%D0%B5%D0%BD%D0%B5%D1%80%D1%81%D1%82%D0%B2%D0%BE-%D0%B8-%D0%B8%D0%BD%D1%84%D0%BE%D1%80%D0%BC%D0%B0%D1%86%D0%B8%D1%81%D0%BA%D0%B8-%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D0%B8"
+      ],
+      "programNames": [
+        "Интернет, мрежи и безбедност",
+        "Компјутерска едукација",
+        "Компјутерски науки",
+        "Компјутерско инженерство",
+        "Примена на информациски технологии",
+        "Софтверско инженерство и информациски системи"
+      ],
+      "delays": {
+        "betweenSubjects": 100,
+        "betweenPrograms": 500,
+        "betweenBatches": 200
+      },
+      "batching": {
+        "enabled": true,
+        "batchSize": 5
+      }
+    },
+    "2023": {
+      "enabled": true,
+      "baseUrl": "https://www.finki.ukim.mk/mk/dodiplomski-studii",
+      "delays": {
+        "betweenPrograms": 1000
+      }
+    }
+  },
+  "output": {
+    "directory": "./",
+    "filenames": {
+      "2018": "subjects-2018.json",
+      "2023": "subjects-2023.json",
+      "combined": "subjects-combined.json"
+    },
+    "generateSummary": true
+  },
+  "http": {
+    "timeout": 15000,
+    "maxRedirects": 5,
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  }
+}
