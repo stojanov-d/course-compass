@@ -6,6 +6,11 @@ export interface Subject {
     name: string;
     type: "Mandatory" | "Elective";
   }>;
+  description?: string;
+  semester?: number;
+  prerequisites?: string;
+  professors?: string[];
+  level?: string;
 }
 
 export interface ScrapingResult {
