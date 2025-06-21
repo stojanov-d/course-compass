@@ -1,6 +1,6 @@
-import { SubjectsScraper_2018 } from "./SubjectsScraper_2018";
-import { SubjectsScraper_2023 } from "./SubjectsScraper_2023";
-import { ScrapingResult, Subject } from "./types";
+import { CoursesScraper_2018 } from "./CoursesScraper_2018";
+import { CoursesScraper_2023 } from "./CoursesScraper_2023";
+import { ScrapingResult, Course } from "./types";
 import { config } from "./config";
 import fs from "fs";
 import path from "path";
@@ -22,26 +22,22 @@ function parseArgs(): {
   };
 }
 
-async function runScraper2018(): Promise<Subject[]> {
-  const scraper2018 = SubjectsScraper_2018.getInstance();
-  return await scraper2018.scrapeSubjects();
+async function runScraper2018(): Promise<Course[]> {
+  const scraper2018 = CoursesScraper_2018.getInstance();
+  return await scraper2018.scrapeCourses();
 }
 
-async function runScraper2023(): Promise<Subject[]> {
-  const scraper2023 = SubjectsScraper_2023.getInstance();
-  return await scraper2023.scrapeSubjects();
+async function runScraper2023(): Promise<Course[]> {
+  const scraper2023 = CoursesScraper_2023.getInstance();
+  return await scraper2023.scrapeCourses();
 }
 
-function saveResults(
-  subjects: Subject[],
-  filename: string,
-  scraperType: string
-) {
+function saveResults(courses: Course[], filename: string, scraperType: string) {
   const outputConfig = config.output;
 
   const allPrograms = new Set<string>();
-  subjects.forEach((subject) => {
-    subject.studyPrograms.forEach((program) => {
+  courses.forEach((course) => {
+    course.studyPrograms.forEach((program) => {
       allPrograms.add(program.name);
     });
   });
@@ -49,19 +45,19 @@ function saveResults(
   const result: ScrapingResult = {
     success: true,
     timestamp: new Date().toISOString(),
-    totalSubjects: subjects.length,
+    totalCourses: courses.length,
     totalStudyPrograms: allPrograms.size,
-    multiProgramSubjects: subjects.filter((s) => s.studyPrograms.length > 1)
+    multiProgramCourses: courses.filter((c) => c.studyPrograms.length > 1)
       .length,
-    subjectsWithMixedTypes: subjects.filter((subject) => {
-      const types = new Set(subject.studyPrograms.map((sp) => sp.type));
+    coursesWithMixedTypes: courses.filter((course) => {
+      const types = new Set(course.studyPrograms.map((sp) => sp.type));
       return types.size > 1;
     }).length,
-    subjects: subjects,
+    courses: courses,
   };
 
   const outputPath = path.join(__dirname, outputConfig.directory, filename);
-  fs.writeFileSync(outputPath, JSON.stringify(subjects, null, 2), "utf8");
+  fs.writeFileSync(outputPath, JSON.stringify(courses, null, 2), "utf8");
 
   if (outputConfig.generateSummary) {
     const summaryFilename = filename.replace(".json", "-summary.json");
@@ -79,26 +75,26 @@ function saveResults(
 }
 
 function combineResults(
-  subjects2018: Subject[],
-  subjects2023: Subject[]
-): Subject[] {
-  const combinedMap = new Map<string, Subject>();
+  courses2018: Course[],
+  courses2023: Course[]
+): Course[] {
+  const combinedMap = new Map<string, Course>();
 
-  subjects2018.forEach((subject) => {
-    combinedMap.set(subject.name, { ...subject, code: [...subject.code] });
+  courses2018.forEach((course) => {
+    combinedMap.set(course.name, { ...course, code: [...course.code] });
   });
 
-  subjects2023.forEach((subject) => {
-    const existing = combinedMap.get(subject.name);
+  courses2023.forEach((course) => {
+    const existing = combinedMap.get(course.name);
     if (existing) {
       const existingCodes = new Set(existing.code);
-      for (const code of subject.code) {
+      for (const code of course.code) {
         if (!existingCodes.has(code)) {
           existing.code.push(code);
         }
       }
 
-      subject.studyPrograms.forEach((newProgram) => {
+      course.studyPrograms.forEach((newProgram) => {
         const existingProgram = existing.studyPrograms.find(
           (sp) => sp.name === newProgram.name && sp.type === newProgram.type
         );
@@ -107,34 +103,34 @@ function combineResults(
         }
       });
     } else {
-      combinedMap.set(subject.name, { ...subject, code: [...subject.code] });
+      combinedMap.set(course.name, { ...course, code: [...course.code] });
     }
   });
 
   return Array.from(combinedMap.values());
 }
 
-function analyzeSubjectOverlaps(
-  subjects2018: Subject[],
-  subjects2023: Subject[]
+function analyzeCourseOverlaps(
+  courses2018: Course[],
+  courses2023: Course[]
 ): number {
-  const nameMap2018 = new Map<string, Subject[]>();
-  const nameMap2023 = new Map<string, Subject[]>();
+  const nameMap2018 = new Map<string, Course[]>();
+  const nameMap2023 = new Map<string, Course[]>();
 
-  subjects2018.forEach((subject) => {
-    const normalizedName = subject.name.toLowerCase().trim();
+  courses2018.forEach((course) => {
+    const normalizedName = course.name.toLowerCase().trim();
     if (!nameMap2018.has(normalizedName)) {
       nameMap2018.set(normalizedName, []);
     }
-    nameMap2018.get(normalizedName)!.push(subject);
+    nameMap2018.get(normalizedName)!.push(course);
   });
 
-  subjects2023.forEach((subject) => {
-    const normalizedName = subject.name.toLowerCase().trim();
+  courses2023.forEach((course) => {
+    const normalizedName = course.name.toLowerCase().trim();
     if (!nameMap2023.has(normalizedName)) {
       nameMap2023.set(normalizedName, []);
     }
-    nameMap2023.get(normalizedName)!.push(subject);
+    nameMap2023.get(normalizedName)!.push(course);
   });
 
   let overlappingCount = 0;
@@ -171,52 +167,48 @@ async function main() {
     }\n`
   );
 
-  console.log("⌛ Scraping subjects, please wait ... \n");
+  console.log("⌛ Scraping courses, please wait ... \n");
 
   try {
-    let subjects2018: Subject[] = [];
-    let subjects2023: Subject[] = [];
+    let courses2018: Course[] = [];
+    let courses2023: Course[] = [];
 
     if (choice === "2018" || choice === "both") {
-      subjects2018 = await runScraper2018();
+      courses2018 = await runScraper2018();
       if (choice === "2018") {
-        saveResults(subjects2018, outputConfig.filenames["2018"], "2018");
+        saveResults(courses2018, outputConfig.filenames["2018"], "2018");
       }
     }
 
     if (choice === "2023" || choice === "both") {
-      subjects2023 = await runScraper2023();
+      courses2023 = await runScraper2023();
       if (choice === "2023") {
-        saveResults(subjects2023, outputConfig.filenames["2023"], "2023");
+        saveResults(courses2023, outputConfig.filenames["2023"], "2023");
       }
     }
     if (choice === "both") {
-      saveResults(subjects2018, outputConfig.filenames["2018"], "2018");
-      saveResults(subjects2023, outputConfig.filenames["2023"], "2023");
+      saveResults(courses2018, outputConfig.filenames["2018"], "2018");
+      saveResults(courses2023, outputConfig.filenames["2023"], "2023");
 
-      const overlaps = analyzeSubjectOverlaps(subjects2018, subjects2023);
-      const combinedSubjects = combineResults(subjects2018, subjects2023);
-      saveResults(
-        combinedSubjects,
-        outputConfig.filenames.combined,
-        "Combined"
-      );
+      const overlaps = analyzeCourseOverlaps(courses2018, courses2023);
+      const combinedCourses = combineResults(courses2018, courses2023);
+      saveResults(combinedCourses, outputConfig.filenames.combined, "Combined");
 
       console.log(`\n📊 Final Results Summary:`);
-      console.log(`   📚 2018 subjects: ${subjects2018.length}`);
-      console.log(`   📚 2023 subjects: ${subjects2023.length}`);
-      console.log(`   📚 Combined unique subjects: ${combinedSubjects.length}`);
-      console.log(`   🔄 Duplicate subjects by name: ${overlaps}`);
+      console.log(`   📚 2018 courses: ${courses2018.length}`);
+      console.log(`   📚 2023 courses: ${courses2023.length}`);
+      console.log(`   📚 Combined unique courses: ${combinedCourses.length}`);
+      console.log(`   🔄 Duplicate courses by name: ${overlaps}`);
     }
   } catch (error) {
     const result: ScrapingResult = {
       success: false,
       timestamp: new Date().toISOString(),
-      totalSubjects: 0,
+      totalCourses: 0,
       totalStudyPrograms: 0,
-      multiProgramSubjects: 0,
-      subjectsWithMixedTypes: 0,
-      subjects: [],
+      multiProgramCourses: 0,
+      coursesWithMixedTypes: 0,
+      courses: [],
       error: error instanceof Error ? error.message : "Unknown error occurred",
     };
 

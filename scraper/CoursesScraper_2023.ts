@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 import axios from "axios";
-import { Subject } from "./types";
+import { Course } from "./types";
 import { config } from "./config";
 
 async function getProgrameLinks(): Promise<{ url: string; name: string }[]> {
@@ -27,14 +27,14 @@ async function getProgrameLinks(): Promise<{ url: string; name: string }[]> {
   }
 }
 
-async function scrapeSubjectDetails(subjectUrl: string): Promise<{
+async function scrapeCourseDetails(courseUrl: string): Promise<{
   semester?: number;
   prerequisites?: string;
   description?: string;
   professors?: string[];
 }> {
   try {
-    const response = await axios.get(subjectUrl);
+    const response = await axios.get(courseUrl);
     const $ = cheerio.load(response.data);
 
     let semester: number | undefined;
@@ -102,21 +102,21 @@ async function scrapeSubjectDetails(subjectUrl: string): Promise<{
       professors: professors.length > 0 ? professors : undefined,
     };
   } catch (error) {
-    console.error(`Error scraping details for ${subjectUrl}:`, error);
+    console.error(`Error scraping details for ${courseUrl}:`, error);
     return {};
   }
 }
 
-async function scrapeSubjectsFromPage(
+async function scrapeCoursesFromPage(
   url: string,
   programName: string
-): Promise<Subject[]> {
+): Promise<Course[]> {
   try {
     if (url.endsWith("/en")) return [];
 
     const response = await axios.get(url);
     const $ = cheerio.load(response.data);
-    const subjects: Subject[] = [];
+    const courses: Course[] = [];
     const cleanProgramName = programName.replace(/\s+/g, " ").trim();
 
     $("table.table.table-striped.table-bordered").each((_, table) => {
@@ -135,20 +135,20 @@ async function scrapeSubjectsFromPage(
           const tds = $row.find("td");
 
           if (tds.length >= 2) {
-            const subjectCode = $(tds[0]).find("span").text().trim();
+            const courseCode = $(tds[0]).find("span").text().trim();
             const anchor = $(tds[1]).find("a");
-            const subjectName = anchor.text().trim();
-            const subjectLink = anchor.attr("href");
-            const subjectLevel = subjectCode.match(/L[1-3]/)?.[0];
-            if (subjectCode.startsWith("F23") && subjectName) {
-              subjects.push({
-                code: [subjectCode],
-                name: subjectName,
-                link: subjectLink
-                  ? `https://www.finki.ukim.mk${subjectLink}`
+            const courseName = anchor.text().trim();
+            const courseLink = anchor.attr("href");
+            const courseLevel = courseCode.match(/L[1-3]/)?.[0];
+            if (courseCode.startsWith("F23") && courseName) {
+              courses.push({
+                code: [courseCode],
+                name: courseName,
+                link: courseLink
+                  ? `https://www.finki.ukim.mk${courseLink}`
                   : undefined,
                 studyPrograms: [{ name: cleanProgramName, type: "Mandatory" }],
-                level: subjectLevel,
+                level: courseLevel,
               });
             }
           }
@@ -173,20 +173,20 @@ async function scrapeSubjectsFromPage(
             if ($row.find("th").length > 0) return;
 
             if (tds.length >= 2) {
-              const subjectCode = $(tds[0]).text().trim();
+              const courseCode = $(tds[0]).text().trim();
               const anchor = $(tds[1]).find("a");
-              const subjectName =
+              const courseName =
                 anchor.length > 0
                   ? anchor.text().trim()
                   : $(tds[1]).text().trim();
-              const subjectLink = anchor.attr("href");
+              const courseLink = anchor.attr("href");
 
-              if (subjectCode.startsWith("F23") && subjectName) {
-                subjects.push({
-                  code: [subjectCode],
-                  name: subjectName,
-                  link: subjectLink
-                    ? `https://www.finki.ukim.mk${subjectLink}`
+              if (courseCode.startsWith("F23") && courseName) {
+                courses.push({
+                  code: [courseCode],
+                  name: courseName,
+                  link: courseLink
+                    ? `https://www.finki.ukim.mk${courseLink}`
                     : undefined, // Capture the link!
                   studyPrograms: [{ name: cleanProgramName, type: "Elective" }],
                 });
@@ -197,23 +197,23 @@ async function scrapeSubjectsFromPage(
       }
     });
 
-    return subjects;
+    return courses;
   } catch (error) {
     return [];
   }
 }
 
-export class SubjectsScraper_2023 {
-  private static instance: SubjectsScraper_2023;
+export class CoursesScraper_2023 {
+  private static instance: CoursesScraper_2023;
 
-  public static getInstance(): SubjectsScraper_2023 {
-    if (!SubjectsScraper_2023.instance) {
-      SubjectsScraper_2023.instance = new SubjectsScraper_2023();
+  public static getInstance(): CoursesScraper_2023 {
+    if (!CoursesScraper_2023.instance) {
+      CoursesScraper_2023.instance = new CoursesScraper_2023();
     }
-    return SubjectsScraper_2023.instance;
+    return CoursesScraper_2023.instance;
   }
 
-  public async scrapeSubjects(): Promise<Subject[]> {
+  public async scrapeCourses(): Promise<Course[]> {
     const scraperConfig = config.scrapers["2023"];
 
     if (!scraperConfig.enabled) {
@@ -221,33 +221,33 @@ export class SubjectsScraper_2023 {
     }
 
     const programs = await getProgrameLinks();
-    const subjectsMap = new Map<string, Subject>();
+    const coursesMap = new Map<string, Course>();
 
     for (const program of programs) {
       console.log(`Scraping program: ${program.name}`);
-      const subjects = await scrapeSubjectsFromPage(program.url, program.name);
+      const courses = await scrapeCoursesFromPage(program.url, program.name);
 
-      for (const subject of subjects) {
-        const existingSubject = subjectsMap.get(subject.name);
+      for (const course of courses) {
+        const existingCourse = coursesMap.get(course.name);
 
-        if (existingSubject) {
-          const existingCodes = new Set(existingSubject.code);
-          for (const code of subject.code) {
+        if (existingCourse) {
+          const existingCodes = new Set(existingCourse.code);
+          for (const code of course.code) {
             if (!existingCodes.has(code)) {
-              existingSubject.code.push(code);
+              existingCourse.code.push(code);
             }
           }
 
           const cleanProgramName = program.name.replace(/\s+/g, " ").trim();
-          const existingProgram = existingSubject.studyPrograms.find(
+          const existingProgram = existingCourse.studyPrograms.find(
             (sp) => sp.name === cleanProgramName
           );
 
           if (!existingProgram) {
-            existingSubject.studyPrograms.push(...subject.studyPrograms);
+            existingCourse.studyPrograms.push(...course.studyPrograms);
           }
         } else {
-          subjectsMap.set(subject.name, subject);
+          coursesMap.set(course.name, course);
         }
       }
 
@@ -256,62 +256,60 @@ export class SubjectsScraper_2023 {
       );
     }
 
-    const subjects = Array.from(subjectsMap.values()).map((subject) => ({
-      ...subject,
-      studyPrograms: subject.studyPrograms.map((sp) => ({
+    const coureses = Array.from(coursesMap.values()).map((course) => ({
+      ...course,
+      studyPrograms: course.studyPrograms.map((sp) => ({
         name: sp.name.replace(/\s+/g, " ").trim(),
         type: sp.type,
       })),
     }));
 
-    return await this.enrichSubjectsWithDetails(subjects);
+    return await this.enrichCoursesWithDetails(coureses);
   }
 
-  private async enrichSubjectsWithDetails(
-    subjects: Subject[]
-  ): Promise<Subject[]> {
+  private async enrichCoursesWithDetails(courses: Course[]): Promise<Course[]> {
     console.log(
-      `Enriching ${subjects.length} subjects with detailed information...`
+      `Enriching ${courses.length} courses with detailed information...`
     );
 
-    const subjectsWithLinks = subjects.filter((s) => s.link);
+    const coursesWithLinks = courses.filter((s) => s.link);
     console.log(
-      `Found ${subjectsWithLinks.length} subjects with links to enrich.`
+      `Found ${coursesWithLinks.length} courses with links to enrich.`
     );
 
-    const enrichedSubjects = [...subjects];
+    const enrichedCourses = [...courses];
 
-    for (let i = 0; i < enrichedSubjects.length; i++) {
-      const subject = enrichedSubjects[i];
-      if (subject.link) {
+    for (let i = 0; i < enrichedCourses.length; i++) {
+      const course = enrichedCourses[i];
+      if (course.link) {
         console.log(
-          `Enriching: ${subject.name} (${
-            subjectsWithLinks.indexOf(subject) + 1
-          }/${subjectsWithLinks.length})`
+          `Enriching: ${course.name} (${coursesWithLinks.indexOf(course) + 1}/${
+            coursesWithLinks.length
+          })`
         );
         try {
-          const details = await scrapeSubjectDetails(subject.link);
+          const details = await scrapeCourseDetails(course.link);
 
           if (details.semester !== undefined) {
-            subject.semester = details.semester;
+            course.semester = details.semester;
           }
           if (details.prerequisites) {
-            subject.prerequisites = details.prerequisites;
+            course.prerequisites = details.prerequisites;
           }
           if (details.description) {
-            subject.description = details.description;
+            course.description = details.description;
           }
           if (details.professors) {
-            (subject as any).professors = details.professors;
+            (course as any).professors = details.professors;
           }
 
           await new Promise((resolve) => setTimeout(resolve, 300));
         } catch (error) {
-          console.error(`Failed to enrich details for ${subject.name}:`, error);
+          console.error(`Failed to enrich details for ${course.name}:`, error);
         }
       }
     }
 
-    return enrichedSubjects;
+    return enrichedCourses;
   }
 }

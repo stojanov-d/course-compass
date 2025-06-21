@@ -1,4 +1,4 @@
-export interface Subject {
+export interface Course {
   code: string[];
   name: string;
   link?: string;
@@ -16,10 +16,10 @@ export interface Subject {
 export interface ScrapingResult {
   success: boolean;
   timestamp: string;
-  totalSubjects: number;
+  totalCourses: number;
   totalStudyPrograms: number;
-  multiProgramSubjects: number;
-  subjectsWithMixedTypes: number;
-  subjects: Subject[];
+  multiProgramCourses: number;
+  coursesWithMixedTypes: number;
+  courses: Course[];
   error?: string;
 }
