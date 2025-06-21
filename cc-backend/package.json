@@ -9,10 +9,6 @@
     "clean": "rimraf dist",
     "prestart": "npm run clean && npm run build",
     "start": "func start --verbose",
-    "dev:init": "npm run build && node dist/src/scripts/initTables.js",
-    "dev:seed": "npm run build && node dist/src/scripts/seedDev.js",
-    "dev:setup": "npm run dev:init && npm run dev:seed",
-    "dev:reset": "npm run build && node dist/src/scripts/cleanup.js reset && npm run dev:seed",
     "cleanup": "npm run build && node dist/src/scripts/cleanup.js",
     "azurite:start": "azurite --silent --location ./azurite-data --debug ./azurite-data/debug.log",
     "dev": "concurrently \"npm run azurite:start\" \"npm run watch\" \"func start --verbose\"",
@@ -24,7 +20,11 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:ci": "jest --ci --coverage --watchAll=false"
+    "test:ci": "jest --ci --coverage --watchAll=false",
+    "courses": "tsx src/scripts/loadCoursesFromJson.ts",
+    "load-courses": "tsx src/scripts/runCourseLoader.ts",
+    "validate-courses": "tsx src/scripts/validateCourseData.ts",
+    "init-tables": "tsx src/scripts/initTables.ts"
   },
   "dependencies": {
     "@azure/data-tables": "^13.3.0",
@@ -43,6 +43,7 @@
     "prettier": "^3.5.3",
     "rimraf": "^5.0.0",
     "ts-jest": "^29.3.4",
+    "tsx": "^4.0.0",
     "typescript": "^4.0.0",
     "typescript-eslint": "^8.33.1"
   }

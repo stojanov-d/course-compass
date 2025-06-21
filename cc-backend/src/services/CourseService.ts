@@ -7,6 +7,7 @@ export interface CourseFilters {
   isRequired?: boolean;
   isActive?: boolean;
   searchTerm?: string;
+  level?: string;
   minCredits?: number;
   maxCredits?: number;
   minRating?: number;
@@ -19,6 +20,14 @@ export interface CourseCreateRequest {
   isRequired: boolean;
   credits: number;
   description: string;
+  link?: string;
+  studyPrograms?: Array<{
+    name: string;
+    type: 'Mandatory' | 'Elective';
+  }>;
+  prerequisites?: string;
+  professors: string[];
+  level?: string;
 }
 
 export interface CourseUpdateRequest {
@@ -29,6 +38,13 @@ export interface CourseUpdateRequest {
   credits?: number;
   description?: string;
   isActive?: boolean;
+  link?: string;
+  prerequisites?: string;
+  studyPrograms?: Array<{
+    name: string;
+    type: 'Mandatory' | 'Elective';
+  }>;
+  level?: string;
 }
 
 export class CourseService {
@@ -171,6 +187,11 @@ export class CourseService {
         isRequired: courseData.isRequired,
         credits: courseData.credits,
         description: courseData.description,
+        link: courseData.link,
+        studyPrograms: courseData.studyPrograms || [],
+        prerequisites: courseData.prerequisites,
+        professors: courseData.professors,
+        level: courseData.level,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -274,6 +295,11 @@ export class CourseService {
           isRequired: updatedCourse.isRequired,
           credits: updatedCourse.credits,
           description: updatedCourse.description,
+          link: updatedCourse.link,
+          studyPrograms: updatedCourse.studyPrograms,
+          prerequisites: updatedCourse.prerequisites,
+          professors: updatedCourse.professors,
+          level: updatedCourse.level,
           isActive: updatedCourse.isActive,
           createdAt: updatedCourse.createdAt,
           updatedAt: updatedCourse.updatedAt,
@@ -497,6 +523,11 @@ export class CourseService {
       isRequired: entity.isRequired,
       credits: entity.credits,
       description: entity.description,
+      link: entity.link,
+      studyPrograms: entity.studyPrograms,
+      prerequisites: entity.prerequisites,
+      professors: entity.professors,
+      level: entity.level,
       isActive: entity.isActive,
       createdAt: new Date(entity.createdAt),
       updatedAt: new Date(entity.updatedAt),

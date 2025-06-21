@@ -46,7 +46,10 @@ export async function userReviewManagement(
     if (pathSegments.length < 3 || !pathSegments[2]) {
       return {
         status: 400,
-        jsonBody: { error: 'Invalid or missing path. Expected "me", "course/{courseId}", or "{userId}".' },
+        jsonBody: {
+          error:
+            'Invalid or missing path. Expected "me", "course/{courseId}", or "{userId}".',
+        },
       };
     }
     const target = pathSegments[2]; // me, course, or userId
