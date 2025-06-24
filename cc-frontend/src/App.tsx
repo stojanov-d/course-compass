@@ -1,8 +1,14 @@
 import './App.css';
-import TestButton from './components/TestButton';
-// Test frontend deplomynet CI/CD
+import { AppRouter } from './router';
+
 function App() {
-  return <TestButton></TestButton>;
+  return (
+    <>
+      <main>
+        <AppRouter />
+      </main>
+    </>
+  );
 }
 
 export default App;
