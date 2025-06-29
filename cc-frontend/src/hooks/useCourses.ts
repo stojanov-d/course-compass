@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Course,
   CourseFilters,
@@ -13,89 +13,136 @@ import {
   getCourseByCode,
 } from '../api/courseApi';
 
+const filterCoursesLocally = (
+  courses: Course[],
+  filters: CourseFilters
+): Course[] => {
+  return courses.filter((course) => {
+    if (filters.semester && course.semester !== filters.semester) {
+      return false;
+    }
+
+    if (
+      filters.isRequired !== undefined &&
+      course.isRequired !== filters.isRequired
+    ) {
+      return false;
+    }
+
+    if (filters.level && course.level !== filters.level) {
+      return false;
+    }
+
+    if (
+      filters.minRating &&
+      (!course.averageRating || course.averageRating < filters.minRating)
+    ) {
+      return false;
+    }
+
+    if (filters.searchTerm) {
+      const searchTerm = filters.searchTerm.toLowerCase();
+      const courseName = course.courseName.toLowerCase();
+      const courseCode = course.courseCode.toLowerCase();
+      const description = course.description?.toLowerCase() || '';
+
+      if (
+        !courseName.includes(searchTerm) &&
+        !courseCode.includes(searchTerm) &&
+        !description.includes(searchTerm)
+      ) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+};
+
 interface UseCoursesResult {
   courses: Course[];
   loading: boolean;
   error: string | null;
   total: number;
   filters: CourseFilters;
-  fetchCourses: (filters?: CourseFilters) => Promise<void>;
-  searchCourses: (searchTerm: string) => Promise<void>;
-  filterBySemester: (semester: number) => Promise<void>;
-  clearFilters: () => Promise<void>;
+  fetchCourses: (filters?: CourseFilters) => void;
+  searchCourses: (searchTerm: string) => void;
+  filterBySemester: (semester: number) => void;
+  clearFilters: () => void;
   refetch: () => Promise<void>;
 }
 
 export const useCourses = (
   initialFilters?: CourseFilters
 ): UseCoursesResult => {
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [total, setTotal] = useState(0);
   const [filters, setFilters] = useState<CourseFilters>(
     initialFilters || { isActive: true }
   );
 
-  const fetchCourses = useCallback(
-    async (newFilters?: CourseFilters) => {
-      setLoading(true);
-      setError(null);
+  const courses = useMemo(() => {
+    return filterCoursesLocally(allCourses, filters);
+  }, [allCourses, filters]);
 
-      try {
-        const filtersToUse = newFilters || filters;
-        const response: CoursesResponse = await getCourses(filtersToUse);
+  const fetchAllCourses = useCallback(async () => {
+    setLoading(true);
+    setError(null);
 
-        setCourses(response.courses);
-        setTotal(response.total);
-        setFilters(filtersToUse);
-      } catch (err: any) {
-        setError(err.response?.data?.error || 'Failed to fetch courses');
-        setCourses([]);
-        setTotal(0);
-      } finally {
-        setLoading(false);
-      }
+    try {
+      const response: CoursesResponse = await getCourses({ isActive: true });
+      setAllCourses(response.courses);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to fetch courses');
+      setAllCourses([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const updateFilters = useCallback((newFilters?: CourseFilters) => {
+    if (newFilters) {
+      setFilters(newFilters);
+    }
+  }, []);
+
+  const searchCourses = useCallback(
+    (searchTerm: string) => {
+      const newFilters = { ...filters, searchTerm };
+      setFilters(newFilters);
     },
     [filters]
   );
 
-  const searchCourses = useCallback(
-    async (searchTerm: string) => {
-      const newFilters = { ...filters, searchTerm };
-      await fetchCourses(newFilters);
-    },
-    [filters, fetchCourses]
-  );
-
   const filterBySemester = useCallback(
-    async (semester: number) => {
+    (semester: number) => {
       const newFilters = { ...filters, semester };
-      await fetchCourses(newFilters);
+      setFilters(newFilters);
     },
-    [filters, fetchCourses]
+    [filters]
   );
 
-  const clearFilters = useCallback(async () => {
+  const clearFilters = useCallback(() => {
     const clearedFilters = { isActive: true };
-    await fetchCourses(clearedFilters);
-  }, [fetchCourses]);
+    setFilters(clearedFilters);
+  }, []);
 
   const refetch = useCallback(async () => {
-    await fetchCourses(filters);
-  }, [fetchCourses, filters]);
+    await fetchAllCourses();
+  }, [fetchAllCourses]);
 
   useEffect(() => {
-    fetchCourses();
-  }, []);
+    fetchAllCourses();
+  }, [fetchAllCourses]);
 
   return {
     courses,
     loading,
     error,
-    total,
+    total: courses.length,
     filters,
-    fetchCourses,
+    fetchCourses: updateFilters,
     searchCourses,
     filterBySemester,
     clearFilters,
@@ -123,7 +170,7 @@ export const useCoursesBySemester = (
 
   const fetchCoursesBySemester = useCallback(async (semesterNumber: number) => {
     if (semesterNumber < 1 || semesterNumber > 8) {
-      setError('Semester must be between 1 and 8');
+      setError('Invalid semester number');
       return;
     }
 
@@ -136,11 +183,9 @@ export const useCoursesBySemester = (
 
       setCourses(response.courses);
       setTotal(response.total);
-      setSemester(response.semester);
+      setSemester(semesterNumber);
     } catch (err: any) {
-      setError(
-        err.response?.data?.error || 'Failed to fetch courses by semester'
-      );
+      setError(err.response?.data?.error || 'Failed to fetch courses');
       setCourses([]);
       setTotal(0);
     } finally {
@@ -149,10 +194,8 @@ export const useCoursesBySemester = (
   }, []);
 
   useEffect(() => {
-    if (semester >= 1 && semester <= 8) {
-      fetchCoursesBySemester(semester);
-    }
-  }, [semester, fetchCoursesBySemester]);
+    fetchCoursesBySemester(semester);
+  }, []);
 
   return {
     courses,

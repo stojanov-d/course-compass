@@ -49,14 +49,9 @@ export async function GetCourses(
       filters.searchTerm = searchTerm;
     }
 
-    const minCredits = request.query.get('minCredits');
-    if (minCredits) {
-      filters.minCredits = parseInt(minCredits);
-    }
-
-    const maxCredits = request.query.get('maxCredits');
-    if (maxCredits) {
-      filters.maxCredits = parseInt(maxCredits);
+    const level = request.query.get('level');
+    if (level) {
+      filters.level = level;
     }
 
     const minRating = request.query.get('minRating');

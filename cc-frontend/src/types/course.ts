@@ -25,8 +25,6 @@ export interface CourseFilters {
   isActive?: boolean;
   searchTerm?: string;
   level?: string;
-  minCredits?: number;
-  maxCredits?: number;
   minRating?: number;
 }
 
