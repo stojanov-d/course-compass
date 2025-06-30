@@ -120,13 +120,6 @@ describe('CourseService', () => {
       expect(courses).toHaveLength(2);
     });
 
-    it('should filter courses by credit range', async () => {
-      const filters: CourseFilters = { minCredits: 6, maxCredits: 6 };
-      const courses = await courseService.getCourses(filters);
-
-      expect(courses).toHaveLength(2);
-    });
-
     it('should filter courses by minimum rating', async () => {
       const filters: CourseFilters = { minRating: 4.0 };
       const courses = await courseService.getCourses(filters);

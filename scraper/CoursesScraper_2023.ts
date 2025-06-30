@@ -3,6 +3,17 @@ import axios from "axios";
 import { Course } from "./types";
 import { config } from "./config";
 
+const semesterNumber = [
+  { label: "1 / Зимски", value: 1 },
+  { label: "1 / Летен", value: 2 },
+  { label: "2 / Зимски", value: 3 },
+  { label: "2 / Летен", value: 4 },
+  { label: "3 / Зимски", value: 5 },
+  { label: "3 / Летен", value: 6 },
+  { label: "4 / Зимски", value: 7 },
+  { label: "4 / Летен", value: 8 },
+];
+
 async function getProgrameLinks(): Promise<{ url: string; name: string }[]> {
   const scraperConfig = config.scrapers["2023"];
   const baseUrl = "https://www.finki.ukim.mk";
@@ -32,6 +43,7 @@ async function scrapeCourseDetails(courseUrl: string): Promise<{
   prerequisites?: string;
   description?: string;
   professors?: string[];
+  credits?: number;
 }> {
   try {
     const response = await axios.get(courseUrl);
@@ -41,21 +53,31 @@ async function scrapeCourseDetails(courseUrl: string): Promise<{
     let prerequisites: string | undefined;
     let description: string | undefined;
     let professors: string[] = [];
+    let credits: number | undefined;
 
     const semesterSelector =
-      "#block-system-main > div > div > div > div:nth-child(6) > div > div:nth-child(2) > table > tbody > tr:nth-child(6) > td:nth-child(2) > p:nth-child(2) > span:nth-child(1)";
+      "#block-system-main > div > div > div > div:nth-child(6) > div > div:nth-child(2) > table > tbody > tr:nth-child(6) > td:nth-child(2) > p:nth-child(2)";
     const professorsSelector =
       "#block-system-main > div > div > div > div:nth-child(6) > div > div:nth-child(2) > table > tbody > tr:nth-child(7) > td:nth-child(3) > p";
     const prerequisitesSelector =
       "#block-system-main > div > div > div > div:nth-child(6) > div > div:nth-child(2) > table > tbody > tr:nth-child(8) > td:nth-child(3) > p > span";
     const descriptionSelector =
       "#block-system-main > div > div > div > div:nth-child(6) > div > div:nth-child(2) > table > tbody > tr:nth-child(9) > td:nth-child(2) > p:nth-child(3) > span";
+    const creditsSelector =
+      "#block-system-main > div > div > div > div:nth-child(6) > div > div:nth-child(2) > table > tbody > tr:nth-child(6) > td:nth-child(3) > p:nth-child(2) > span";
 
     const semesterText = $(semesterSelector).text().trim();
     if (semesterText) {
-      const semesterMatch = semesterText.match(/(\d+)/);
-      if (semesterMatch) {
-        semester = parseInt(semesterMatch[1]);
+      semester = semesterNumber.find((s) =>
+        semesterText.includes(s.label)
+      )?.value;
+    }
+
+    const creditsText = $(creditsSelector).text().trim();
+    if (creditsText) {
+      const parsedCredits = parseInt(creditsText);
+      if (!isNaN(parsedCredits)) {
+        credits = parsedCredits;
       }
     }
 
@@ -100,6 +122,7 @@ async function scrapeCourseDetails(courseUrl: string): Promise<{
       prerequisites,
       description,
       professors: professors.length > 0 ? professors : undefined,
+      credits: credits !== undefined ? credits : undefined,
     };
   } catch (error) {
     console.error(`Error scraping details for ${courseUrl}:`, error);
@@ -301,6 +324,9 @@ export class CoursesScraper_2023 {
           }
           if (details.professors) {
             (course as any).professors = details.professors;
+          }
+          if (details.credits !== undefined) {
+            course.credits = details.credits;
           }
 
           await new Promise((resolve) => setTimeout(resolve, 300));

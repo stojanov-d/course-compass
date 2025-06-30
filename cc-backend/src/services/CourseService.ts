@@ -8,8 +8,6 @@ export interface CourseFilters {
   isActive?: boolean;
   searchTerm?: string;
   level?: string;
-  minCredits?: number;
-  maxCredits?: number;
   minRating?: number;
 }
 
@@ -468,29 +466,8 @@ export class CourseService {
     }
 
     if (
-      filters.isRequired !== undefined &&
-      course.isRequired !== filters.isRequired
-    ) {
-      return false;
-    }
-
-    if (
       filters.isActive !== undefined &&
       course.isActive !== filters.isActive
-    ) {
-      return false;
-    }
-
-    if (
-      filters.minCredits !== undefined &&
-      course.credits < filters.minCredits
-    ) {
-      return false;
-    }
-
-    if (
-      filters.maxCredits !== undefined &&
-      course.credits > filters.maxCredits
     ) {
       return false;
     }
@@ -504,9 +481,8 @@ export class CourseService {
 
     if (filters.searchTerm) {
       const searchTerm = filters.searchTerm.toLowerCase();
-      const searchableText =
-        `${course.courseCode} ${course.courseName} ${course.description}`.toLowerCase();
-      if (!searchableText.includes(searchTerm)) {
+      const courseNameText = course.courseName.toLowerCase();
+      if (!courseNameText.includes(searchTerm)) {
         return false;
       }
     }

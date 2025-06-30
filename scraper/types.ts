@@ -11,6 +11,7 @@ export interface Course {
   prerequisites?: string;
   professors?: string[];
   level?: string;
+  credits?: number;
 }
 
 export interface ScrapingResult {
