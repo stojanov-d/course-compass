@@ -75,7 +75,10 @@ async function scrapeCourseDetails(courseUrl: string): Promise<{
 
     const creditsText = $(creditsSelector).text().trim();
     if (creditsText) {
-      credits = parseInt(creditsText);
+      const parsedCredits = parseInt(creditsText);
+      if (!isNaN(parsedCredits)) {
+        credits = parsedCredits;
+      }
     }
 
     const professorsText = $(professorsSelector).text().trim();
