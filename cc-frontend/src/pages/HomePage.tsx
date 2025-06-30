@@ -6,6 +6,7 @@ import { CourseList } from '../components/course/CourseList';
 import { useCourses } from '../hooks/useCourses';
 import { useAuth } from '../hooks/useAuth';
 import { CourseFilters as FilterType } from '../types/course';
+import { SearchBar } from '../components/common/SearchBar';
 
 const HomePage = () => {
   const { user, isLoading, authRedirect } = useAuth();
@@ -18,6 +19,7 @@ const HomePage = () => {
     studyPrograms,
     fetchCourses,
     clearFilters,
+    searchCourses,
   } = useCourses();
 
   const handleFiltersChange = useCallback(
@@ -25,6 +27,13 @@ const HomePage = () => {
       fetchCourses(newFilters);
     },
     [fetchCourses]
+  );
+
+  const handleSearch = useCallback(
+    (searchTerm: string) => {
+      searchCourses(searchTerm);
+    },
+    [searchCourses]
   );
 
   const handleCourseClick = useCallback((courseId: string) => {
@@ -101,6 +110,7 @@ const HomePage = () => {
                   Navigate your academic journey with confidence. Discover
                   courses, read reviews, and make informed decisions.
                 </Typography>
+                <SearchBar onSearch={handleSearch} />
               </Box>
             </Fade>
 

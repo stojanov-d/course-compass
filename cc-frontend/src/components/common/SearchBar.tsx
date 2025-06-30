@@ -50,7 +50,7 @@ export const SearchBar = ({
   );
 
   return (
-    <Box sx={{ width: '100%', maxWidth: 700 }}>
+    <Box sx={{ width: '100%', maxWidth: 700, mx: 'auto' }}>
       <Paper
         elevation={0}
         sx={{

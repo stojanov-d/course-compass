@@ -60,14 +60,8 @@ const filterCoursesLocally = (
     if (filters.searchTerm) {
       const searchTerm = filters.searchTerm.toLowerCase();
       const courseName = course.courseName.toLowerCase();
-      const courseCode = course.courseCode.toLowerCase();
-      const description = course.description?.toLowerCase() || '';
 
-      if (
-        !courseName.includes(searchTerm) &&
-        !courseCode.includes(searchTerm) &&
-        !description.includes(searchTerm)
-      ) {
+      if (!courseName.includes(searchTerm)) {
         return false;
       }
     }

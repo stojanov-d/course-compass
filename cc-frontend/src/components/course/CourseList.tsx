@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Grid,
   Box,
@@ -32,6 +32,10 @@ export const CourseList = ({
 }: CourseListProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const courseListRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [courses]);
 
   const totalPages = Math.ceil(courses.length / COURSES_PER_PAGE);
   const startIndex = (currentPage - 1) * COURSES_PER_PAGE;
