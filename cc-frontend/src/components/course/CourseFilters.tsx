@@ -8,6 +8,10 @@ import {
   Button,
   Divider,
   CircularProgress,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
 import {
   FilterList as FilterIcon,
@@ -19,6 +23,7 @@ interface CourseFiltersProps {
   filters: FilterType;
   onFiltersChange: (filters: FilterType) => void;
   onClearFilters: () => void;
+  studyPrograms: string[];
   loading?: boolean;
 }
 
@@ -26,6 +31,7 @@ export const CourseFilters = ({
   filters,
   onFiltersChange,
   onClearFilters,
+  studyPrograms,
   loading = false,
 }: CourseFiltersProps) => {
   const [localFilters, setLocalFilters] = useState<FilterType>(filters);
@@ -40,7 +46,7 @@ export const CourseFilters = ({
   );
 
   const handleClear = useCallback(() => {
-    const clearedFilters = { isActive: true };
+    const clearedFilters: FilterType = { isActive: true };
     setLocalFilters(clearedFilters);
     onClearFilters();
   }, [onClearFilters]);
@@ -51,6 +57,7 @@ export const CourseFilters = ({
     if (localFilters.isRequired !== undefined) count++;
     if (localFilters.level) count++;
     if (localFilters.minRating) count++;
+    if (localFilters.studyProgram) count++;
     return count;
   };
 
@@ -158,6 +165,43 @@ export const CourseFilters = ({
       </Box>
 
       <Stack spacing={4}>
+        {/* Study Program Filter */}
+        <Box>
+          <Typography
+            variant="subtitle1"
+            fontWeight={600}
+            mb={2}
+            color="text.primary"
+          >
+            Study Program
+          </Typography>
+          <FormControl fullWidth>
+            <InputLabel id="study-program-select-label">
+              Select Program
+            </InputLabel>
+            <Select
+              labelId="study-program-select-label"
+              value={localFilters.studyProgram || ''}
+              label="Select Program"
+              onChange={(e) =>
+                handleFilterChange({
+                  studyProgram: e.target.value || undefined,
+                })
+              }
+              disabled={loading}
+            >
+              <MenuItem value="">
+                <em>All Programs</em>
+              </MenuItem>
+              {studyPrograms.map((program) => (
+                <MenuItem key={program} value={program}>
+                  {program}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+
         {/* Semester Filter */}
         <Box>
           <Typography
@@ -274,7 +318,9 @@ export const CourseFilters = ({
             variant="subtitle1"
             fontWeight={600}
             mb={2}
-            color="text.primary"
+            color={
+              !localFilters.studyProgram ? 'text.disabled' : 'text.primary'
+            }
           >
             Course Type
           </Typography>
@@ -289,7 +335,7 @@ export const CourseFilters = ({
                     : 'outlined'
                 }
                 clickable
-                disabled={loading}
+                disabled={loading || !localFilters.studyProgram}
                 onClick={() =>
                   handleFilterChange({
                     isRequired:

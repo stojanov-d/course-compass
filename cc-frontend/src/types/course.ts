@@ -26,6 +26,7 @@ export interface CourseFilters {
   searchTerm?: string;
   level?: string;
   minRating?: number;
+  studyProgram?: string;
 }
 
 export interface CoursesResponse {

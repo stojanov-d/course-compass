@@ -14,9 +14,14 @@ import { Course } from '../../types/course';
 interface CourseCardProps {
   course: Course;
   onClick: (courseId: string) => void;
+  activeStudyProgram?: string;
 }
 
-export const CourseCard = ({ course, onClick }: CourseCardProps) => {
+export const CourseCard = ({
+  course,
+  onClick,
+  activeStudyProgram,
+}: CourseCardProps) => {
   const handleClick = () => {
     onClick(course.courseId);
   };
@@ -34,6 +39,22 @@ export const CourseCard = ({ course, onClick }: CourseCardProps) => {
     }
   };
 
+  const getCourseTypeForDisplay = () => {
+    if (activeStudyProgram) {
+      const program = course.studyPrograms.find(
+        (p) => p.name === activeStudyProgram
+      );
+      if (program) {
+        return {
+          isRequired: program.type === 'Mandatory',
+          label: program.type,
+        };
+      }
+    }
+    return null;
+  };
+
+  const displayType = getCourseTypeForDisplay();
   const levelStyle = getLevelColor(course.level);
 
   return (
@@ -131,17 +152,19 @@ export const CourseCard = ({ course, onClick }: CourseCardProps) => {
                 fontWeight: 500,
               }}
             />
-            <Chip
-              label={course.isRequired ? 'Required' : 'Elective'}
-              size="small"
-              color={course.isRequired ? 'error' : 'success'}
-              variant="filled"
-              sx={{
-                borderRadius: 2,
-                fontSize: '0.75rem',
-                fontWeight: 600,
-              }}
-            />
+            {displayType && (
+              <Chip
+                label={displayType.label}
+                size="small"
+                color={displayType.isRequired ? 'error' : 'success'}
+                variant="filled"
+                sx={{
+                  borderRadius: 2,
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                }}
+              />
+            )}
             <Chip
               icon={<SchoolIcon sx={{ fontSize: 14 }} />}
               label={`${course.credits} Credits`}

@@ -8,13 +8,14 @@ import { useAuth } from '../hooks/useAuth';
 import { CourseFilters as FilterType } from '../types/course';
 
 const HomePage = () => {
-  const { user, isLoading, authRedirect } = useAuth(); // Add authRedirect
+  const { user, isLoading, authRedirect } = useAuth();
   const {
     courses,
     loading,
     error,
     total,
     filters,
+    studyPrograms,
     fetchCourses,
     clearFilters,
   } = useCourses();
@@ -109,7 +110,7 @@ const HomePage = () => {
                   <Button
                     variant="contained"
                     size="large"
-                    onClick={handleDiscordLogin} // Add the onClick handler
+                    onClick={handleDiscordLogin}
                     sx={{
                       bgcolor: 'rgba(255,255,255,0.2)',
                       backdropFilter: 'blur(10px)',
@@ -143,17 +144,23 @@ const HomePage = () => {
             filters={filters}
             onFiltersChange={handleFiltersChange}
             onClearFilters={clearFilters}
+            studyPrograms={studyPrograms}
             loading={loading}
           />
 
           {/* Course List */}
-          <CourseList
-            courses={courses}
-            loading={loading}
-            error={error}
-            total={total}
-            onCourseClick={handleCourseClick}
-          />
+          <Fade in={!loading}>
+            <Box>
+              <CourseList
+                courses={courses}
+                loading={loading}
+                error={error}
+                total={total}
+                onCourseClick={handleCourseClick}
+                activeStudyProgram={filters.studyProgram}
+              />
+            </Box>
+          </Fade>
         </Stack>
       </Container>
     </Box>

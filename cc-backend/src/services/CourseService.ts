@@ -466,13 +466,6 @@ export class CourseService {
     }
 
     if (
-      filters.isRequired !== undefined &&
-      course.isRequired !== filters.isRequired
-    ) {
-      return false;
-    }
-
-    if (
       filters.isActive !== undefined &&
       course.isActive !== filters.isActive
     ) {

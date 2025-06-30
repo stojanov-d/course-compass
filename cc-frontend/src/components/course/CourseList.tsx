@@ -17,6 +17,7 @@ interface CourseListProps {
   error: string | null;
   total: number;
   onCourseClick: (courseId: string) => void;
+  activeStudyProgram?: string;
 }
 
 const COURSES_PER_PAGE = 12;
@@ -27,6 +28,7 @@ export const CourseList = ({
   error,
   total,
   onCourseClick,
+  activeStudyProgram,
 }: CourseListProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const courseListRef = useRef<HTMLDivElement>(null);
@@ -98,7 +100,11 @@ export const CourseList = ({
             size={{ xs: 12, sm: 6, md: 4 }}
             key={course.courseId || `course-${index}`}
           >
-            <CourseCard course={course} onClick={onCourseClick} />
+            <CourseCard
+              course={course}
+              onClick={onCourseClick}
+              activeStudyProgram={activeStudyProgram}
+            />
           </Grid>
         ))}
       </Grid>

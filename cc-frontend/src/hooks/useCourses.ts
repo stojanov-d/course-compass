@@ -22,11 +22,28 @@ const filterCoursesLocally = (
       return false;
     }
 
-    if (
-      filters.isRequired !== undefined &&
-      course.isRequired !== filters.isRequired
-    ) {
-      return false;
+    if (filters.studyProgram) {
+      const programInfo = course.studyPrograms.find(
+        (p) => p.name === filters.studyProgram
+      );
+
+      if (!programInfo) {
+        return false;
+      }
+
+      if (filters.isRequired !== undefined) {
+        const isRequiredForProgram = programInfo.type === 'Mandatory';
+        if (isRequiredForProgram !== filters.isRequired) {
+          return false;
+        }
+      }
+    } else if (filters.isRequired !== undefined) {
+      const isMandatoryInAnyProgram = course.studyPrograms.some(
+        (p) => p.type === 'Mandatory'
+      );
+      if (isMandatoryInAnyProgram !== filters.isRequired) {
+        return false;
+      }
     }
 
     if (filters.level && course.level !== filters.level) {
@@ -65,6 +82,7 @@ interface UseCoursesResult {
   error: string | null;
   total: number;
   filters: CourseFilters;
+  studyPrograms: string[]; // Add this
   fetchCourses: (filters?: CourseFilters) => void;
   searchCourses: (searchTerm: string) => void;
   filterBySemester: (semester: number) => void;
@@ -85,6 +103,14 @@ export const useCourses = (
   const courses = useMemo(() => {
     return filterCoursesLocally(allCourses, filters);
   }, [allCourses, filters]);
+
+  const studyPrograms = useMemo(() => {
+    const programs = new Set<string>();
+    allCourses.forEach((course) => {
+      course.studyPrograms.forEach((p) => programs.add(p.name));
+    });
+    return Array.from(programs).sort();
+  }, [allCourses]);
 
   const fetchAllCourses = useCallback(async () => {
     setLoading(true);
@@ -142,6 +168,7 @@ export const useCourses = (
     error,
     total: courses.length,
     filters,
+    studyPrograms,
     fetchCourses: updateFilters,
     searchCourses,
     filterBySemester,

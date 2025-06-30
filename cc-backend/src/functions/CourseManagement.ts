@@ -70,11 +70,16 @@ export async function GetCourses(
       credits: course.credits,
       description: course.description,
       link: course.link,
-      studyPrograms: course.studyPrograms,
+      studyPrograms:
+        typeof course.studyPrograms === 'string'
+          ? JSON.parse(course.studyPrograms)
+          : course.studyPrograms || [],
       prerequisites: course.prerequisites,
-      professors: course.professors,
+      professors:
+        typeof course.professors === 'string'
+          ? JSON.parse(course.professors)
+          : course.professors || [],
       level: course.level,
-      isActive: course.isActive,
       averageRating: course.averageRating,
       totalReviews: course.totalReviews,
       createdAt: course.createdAt,
@@ -130,9 +135,15 @@ export async function GetCoursesBySemester(
       credits: course.credits,
       description: course.description,
       link: course.link,
-      studyPrograms: course.studyPrograms,
+      studyPrograms:
+        typeof course.studyPrograms === 'string'
+          ? JSON.parse(course.studyPrograms)
+          : course.studyPrograms || [],
       prerequisites: course.prerequisites,
-      professors: course.professors,
+      professors:
+        typeof course.professors === 'string'
+          ? JSON.parse(course.professors)
+          : course.professors || [],
       level: course.level,
       averageRating: course.averageRating,
       totalReviews: course.totalReviews,
@@ -205,9 +216,15 @@ export async function GetCourseById(
         credits: course.credits,
         description: course.description,
         link: course.link,
-        studyPrograms: course.studyPrograms,
+        studyPrograms:
+          typeof course.studyPrograms === 'string'
+            ? JSON.parse(course.studyPrograms)
+            : course.studyPrograms || [],
         prerequisites: course.prerequisites,
-        professors: course.professors,
+        professors:
+          typeof course.professors === 'string'
+            ? JSON.parse(course.professors)
+            : course.professors || [],
         level: course.level,
         averageRating: course.averageRating,
         totalReviews: course.totalReviews,
@@ -265,9 +282,15 @@ export async function GetCourseByCode(
         credits: course.credits,
         description: course.description,
         link: course.link,
-        studyPrograms: course.studyPrograms,
+        studyPrograms:
+          typeof course.studyPrograms === 'string'
+            ? JSON.parse(course.studyPrograms)
+            : course.studyPrograms || [],
         prerequisites: course.prerequisites,
-        professors: course.professors,
+        professors:
+          typeof course.professors === 'string'
+            ? JSON.parse(course.professors)
+            : course.professors || [],
         level: course.level,
         averageRating: course.averageRating,
         totalReviews: course.totalReviews,
