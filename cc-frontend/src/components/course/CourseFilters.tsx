@@ -1,22 +1,15 @@
 import { useState, useCallback } from 'react';
 import {
-  Box,
   Paper,
-  Typography,
-  Chip,
   Stack,
   Button,
-  Divider,
-  CircularProgress,
   Select,
   MenuItem,
   FormControl,
   InputLabel,
+  Grid,
 } from '@mui/material';
-import {
-  FilterList as FilterIcon,
-  Clear as ClearIcon,
-} from '@mui/icons-material';
+import { Clear as ClearIcon } from '@mui/icons-material';
 import { CourseFilters as FilterType } from '../../types/course';
 
 interface CourseFiltersProps {
@@ -81,108 +74,36 @@ export const CourseFilters = ({
   ];
 
   const courseTypeOptions = [
-    { value: true, label: 'Required', color: '#ef4444' },
-    { value: false, label: 'Elective', color: '#059669' },
+    { value: true, label: 'Required' },
+    { value: false, label: 'Elective' },
   ];
 
   return (
     <Paper
       elevation={0}
       sx={{
-        p: 4,
+        p: 2,
         border: '1px solid',
         borderColor: 'divider',
         borderRadius: 3,
         backgroundColor: 'background.paper',
-        position: 'relative',
+        position: 'sticky',
+        top: 20,
+        zIndex: 10,
         opacity: loading ? 0.7 : 1,
         transition: 'opacity 0.2s ease',
       }}
     >
-      {/* Loading overlay for initial load only */}
-      {loading && (
-        <Box
-          position="absolute"
-          top={0}
-          left={0}
-          right={0}
-          bottom={0}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          bgcolor="rgba(255, 255, 255, 0.8)"
-          borderRadius={3}
-          zIndex={1}
-        >
-          <Box display="flex" alignItems="center" gap={2}>
-            <CircularProgress size={24} />
-            <Typography variant="body2" color="text.secondary">
-              Loading courses...
-            </Typography>
-          </Box>
-        </Box>
-      )}
-
-      {/* Header */}
-      <Box
-        display="flex"
-        alignItems="center"
-        justifyContent="space-between"
-        mb={3}
-      >
-        <Box display="flex" alignItems="center" gap={1.5}>
-          <FilterIcon color="primary" sx={{ fontSize: 28 }} />
-          <Typography variant="h5" fontWeight={600}>
-            Filters & Sorting
-          </Typography>
-          {activeFiltersCount > 0 && (
-            <Chip
-              label={`${activeFiltersCount} active`}
-              size="small"
-              color="primary"
-              variant="filled"
-              sx={{
-                height: 24,
-                fontSize: '0.75rem',
-                fontWeight: 600,
-              }}
-            />
-          )}
-        </Box>
-        {activeFiltersCount > 0 && (
-          <Button
-            startIcon={<ClearIcon />}
-            onClick={handleClear}
-            size="small"
-            variant="outlined"
-            color="secondary"
-            sx={{ borderRadius: 2 }}
-            disabled={loading}
-          >
-            Clear All
-          </Button>
-        )}
-      </Box>
-
-      <Stack spacing={4}>
-        {/* Study Program Filter */}
-        <Box>
-          <Typography
-            variant="subtitle1"
-            fontWeight={600}
-            mb={2}
-            color="text.primary"
-          >
-            Study Program
-          </Typography>
-          <FormControl fullWidth>
+      <Grid container spacing={2} alignItems="center">
+        <Grid size={{ xs: 12, md: 4 }}>
+          <FormControl fullWidth size="small">
             <InputLabel id="study-program-select-label">
-              Select Program
+              Study Program
             </InputLabel>
             <Select
               labelId="study-program-select-label"
               value={localFilters.studyProgram || ''}
-              label="Select Program"
+              label="Study Program"
               onChange={(e) =>
                 handleFilterChange({
                   studyProgram: e.target.value || undefined,
@@ -200,179 +121,106 @@ export const CourseFilters = ({
               ))}
             </Select>
           </FormControl>
-        </Box>
-
-        {/* Semester Filter */}
-        <Box>
-          <Typography
-            variant="subtitle1"
-            fontWeight={600}
-            mb={2}
-            color="text.primary"
-          >
-            Semester
-          </Typography>
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            {semesterOptions.map((option) => (
-              <Chip
-                key={option.value}
-                label={option.label}
-                variant={
-                  localFilters.semester === option.value ? 'filled' : 'outlined'
-                }
-                color={
-                  localFilters.semester === option.value ? 'primary' : 'default'
-                }
-                clickable
-                disabled={loading}
-                onClick={() =>
+        </Grid>
+        <Grid size={{ xs: 12, md: 8 }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+              <InputLabel id="semester-select-label">Semester</InputLabel>
+              <Select
+                labelId="semester-select-label"
+                value={localFilters.semester || ''}
+                label="Semester"
+                onChange={(e) =>
                   handleFilterChange({
-                    semester:
-                      localFilters.semester === option.value
-                        ? undefined
-                        : option.value,
+                    semester: (e.target.value as number) || undefined,
                   })
                 }
-                sx={{
-                  borderRadius: 6,
-                  px: 2,
-                  py: 0.5,
-                  height: 40,
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    transform: 'translateY(-1px)',
-                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-                  },
-                }}
-              />
-            ))}
-          </Stack>
-        </Box>
-
-        <Divider />
-
-        {/* Level Filter */}
-        <Box>
-          <Typography
-            variant="subtitle1"
-            fontWeight={600}
-            mb={2}
-            color="text.primary"
-          >
-            Course Level
-          </Typography>
-          <Stack direction="row" spacing={1.5}>
-            {levelOptions.map((option) => (
-              <Chip
-                key={option.value}
-                label={option.label}
-                variant={
-                  localFilters.level === option.value ? 'filled' : 'outlined'
-                }
-                clickable
                 disabled={loading}
-                onClick={() =>
+              >
+                <MenuItem value="">
+                  <em>Any</em>
+                </MenuItem>
+                {semesterOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+              <InputLabel id="level-select-label">Level</InputLabel>
+              <Select
+                labelId="level-select-label"
+                value={localFilters.level || ''}
+                label="Level"
+                onChange={(e) =>
                   handleFilterChange({
-                    level:
-                      localFilters.level === option.value
-                        ? undefined
-                        : option.value,
+                    level: (e.target.value as string) || undefined,
                   })
                 }
-                sx={{
-                  borderRadius: 6,
-                  px: 2.5,
-                  py: 0.5,
-                  height: 40,
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  borderColor: option.color,
-                  color:
-                    localFilters.level === option.value
-                      ? 'white'
-                      : option.color,
-                  backgroundColor:
-                    localFilters.level === option.value
-                      ? option.color
-                      : 'transparent',
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    backgroundColor: option.color,
-                    color: 'white',
-                    transform: 'translateY(-1px)',
-                    boxShadow: `0 4px 12px ${option.color}40`,
-                  },
-                }}
-              />
-            ))}
-          </Stack>
-        </Box>
-
-        <Divider />
-
-        {/* Course Type Filter */}
-        <Box>
-          <Typography
-            variant="subtitle1"
-            fontWeight={600}
-            mb={2}
-            color={
-              !localFilters.studyProgram ? 'text.disabled' : 'text.primary'
-            }
-          >
-            Course Type
-          </Typography>
-          <Stack direction="row" spacing={1.5}>
-            {courseTypeOptions.map((option) => (
-              <Chip
-                key={option.value.toString()}
-                label={option.label}
-                variant={
-                  localFilters.isRequired === option.value
-                    ? 'filled'
-                    : 'outlined'
+                disabled={loading}
+              >
+                <MenuItem value="">
+                  <em>Any</em>
+                </MenuItem>
+                {levelOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl
+              size="small"
+              sx={{ minWidth: 120 }}
+              disabled={!localFilters.studyProgram}
+            >
+              <InputLabel id="type-select-label">Type</InputLabel>
+              <Select
+                labelId="type-select-label"
+                value={
+                  localFilters.isRequired === undefined
+                    ? ''
+                    : String(localFilters.isRequired)
                 }
-                clickable
-                disabled={loading || !localFilters.studyProgram}
-                onClick={() =>
+                label="Type"
+                onChange={(e) =>
                   handleFilterChange({
                     isRequired:
-                      localFilters.isRequired === option.value
+                      e.target.value === ''
                         ? undefined
-                        : option.value,
+                        : e.target.value === 'true',
                   })
                 }
-                sx={{
-                  borderRadius: 6,
-                  px: 2.5,
-                  py: 0.5,
-                  height: 40,
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  borderColor: option.color,
-                  color:
-                    localFilters.isRequired === option.value
-                      ? 'white'
-                      : option.color,
-                  backgroundColor:
-                    localFilters.isRequired === option.value
-                      ? option.color
-                      : 'transparent',
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    backgroundColor: option.color,
-                    color: 'white',
-                    transform: 'translateY(-1px)',
-                    boxShadow: `0 4px 12px ${option.color}40`,
-                  },
-                }}
-              />
-            ))}
+              >
+                <MenuItem value="">
+                  <em>Any</em>
+                </MenuItem>
+                {courseTypeOptions.map((option) => (
+                  <MenuItem
+                    key={String(option.value)}
+                    value={String(option.value)}
+                  >
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            {activeFiltersCount > 0 && (
+              <Button
+                startIcon={<ClearIcon />}
+                onClick={handleClear}
+                size="small"
+                variant="text"
+                color="secondary"
+                disabled={loading}
+              >
+                Clear
+              </Button>
+            )}
           </Stack>
-        </Box>
-      </Stack>
+        </Grid>
+      </Grid>
     </Paper>
   );
 };

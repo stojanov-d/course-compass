@@ -7,9 +7,10 @@ import { useCourses } from '../hooks/useCourses';
 import { useAuth } from '../hooks/useAuth';
 import { CourseFilters as FilterType } from '../types/course';
 import { SearchBar } from '../components/common/SearchBar';
+import { UserProfileMenu } from '../components/common/UserProfileMenu';
 
 const HomePage = () => {
-  const { user, isLoading, authRedirect } = useAuth();
+  const { user, isLoading, authRedirect, logout } = useAuth();
   const {
     courses,
     loading,
@@ -75,6 +76,44 @@ const HomePage = () => {
       >
         <Container maxWidth="lg">
           <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
+            width="100%"
+            mb={8}
+          >
+            <Box display="flex" alignItems="center" gap={1}>
+              <SchoolIcon sx={{ fontSize: 32, opacity: 0.9 }} />
+              <Typography
+                variant="h5"
+                component="div"
+                fontWeight={700}
+                sx={{ letterSpacing: '0.5px' }}
+              >
+                Course Compass
+              </Typography>
+            </Box>
+            {user ? (
+              <UserProfileMenu user={user} onLogout={logout} />
+            ) : (
+              <Button
+                variant="outlined"
+                onClick={handleDiscordLogin}
+                sx={{
+                  borderColor: 'rgba(255,255,255,0.5)',
+                  color: 'white',
+                  borderRadius: 2,
+                  '&:hover': {
+                    borderColor: 'white',
+                    bgcolor: 'rgba(255,255,255,0.1)',
+                  },
+                }}
+              >
+                Login with Discord
+              </Button>
+            )}
+          </Box>
+          <Box
             sx={{
               position: 'relative',
               zIndex: 1,
@@ -83,7 +122,6 @@ const HomePage = () => {
           >
             <Fade in timeout={1000}>
               <Box>
-                <SchoolIcon sx={{ fontSize: 64, mb: 2, opacity: 0.9 }} />
                 <Typography
                   variant="h2"
                   component="h1"
@@ -94,7 +132,7 @@ const HomePage = () => {
                     mb: 2,
                   }}
                 >
-                  Course Compass
+                  Navigate Your Academic Journey
                 </Typography>
                 <Typography
                   variant="h5"
@@ -107,41 +145,12 @@ const HomePage = () => {
                     fontSize: { xs: '1.1rem', md: '1.3rem' },
                   }}
                 >
-                  Navigate your academic journey with confidence. Discover
-                  courses, read reviews, and make informed decisions.
+                  Discover courses, read reviews, and make informed decisions
+                  with confidence.
                 </Typography>
                 <SearchBar onSearch={handleSearch} />
               </Box>
             </Fade>
-
-            {!user && (
-              <Fade in timeout={1500}>
-                <Box sx={{ mt: 4 }}>
-                  <Button
-                    variant="contained"
-                    size="large"
-                    onClick={handleDiscordLogin}
-                    sx={{
-                      bgcolor: 'rgba(255,255,255,0.2)',
-                      backdropFilter: 'blur(10px)',
-                      border: '1px solid rgba(255,255,255,0.3)',
-                      color: 'white',
-                      px: 4,
-                      py: 1.5,
-                      fontSize: '1.1rem',
-                      borderRadius: 3,
-                      '&:hover': {
-                        bgcolor: 'rgba(255,255,255,0.3)',
-                        transform: 'translateY(-2px)',
-                      },
-                      transition: 'all 0.3s ease',
-                    }}
-                  >
-                    Login with Discord
-                  </Button>
-                </Box>
-              </Fade>
-            )}
           </Box>
         </Container>
       </Box>
