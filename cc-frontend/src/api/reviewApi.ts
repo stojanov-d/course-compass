@@ -17,6 +17,25 @@ export interface VoteResponse {
   };
 }
 
+export interface CreateReviewData {
+  courseId: string;
+  rating: number;
+  difficulty: number;
+  workload: number;
+  reviewText: string;
+  recommendsCourse: boolean;
+  isAnonymous: boolean;
+}
+
+export interface UpdateReviewData {
+  rating: number;
+  difficulty: number;
+  workload: number;
+  reviewText: string;
+  recommendsCourse: boolean;
+  isAnonymous: boolean;
+}
+
 export const getReviewsForCourse = async (
   courseId: string,
   continuationToken?: string
@@ -29,7 +48,53 @@ export const getReviewsForCourse = async (
   const response = await apiClient.get(
     `/reviews/${courseId}?${params.toString()}`
   );
-  return response.data;
+
+  return {
+    reviews: response.data.data || [],
+    total: response.data.data?.length || 0,
+    continuationToken: response.data.continuationToken,
+  };
+};
+
+export const createReview = async (
+  reviewData: CreateReviewData
+): Promise<Review> => {
+  const response = await apiClient.post('/reviews', reviewData);
+  return response.data.data;
+};
+
+export const updateReview = async (
+  courseId: string,
+  reviewId: string,
+  reviewData: UpdateReviewData
+): Promise<Review> => {
+  const response = await apiClient.put(
+    `/reviews/${courseId}/${reviewId}`,
+    reviewData
+  );
+  return response.data.data;
+};
+
+export const deleteReview = async (
+  courseId: string,
+  reviewId: string
+): Promise<void> => {
+  await apiClient.delete(`/reviews/${courseId}/${reviewId}`);
+};
+
+export const getUserReviewForCourse = async (
+  courseId: string
+): Promise<Review | null> => {
+  try {
+    const response = await apiClient.get(`/user-reviews/course/${courseId}`);
+    return response.data.data;
+  } catch (error: unknown) {
+    const axiosError = error as { response?: { status?: number } };
+    if (axiosError.response?.status === 404) {
+      return null; // User hasn't reviewed this course yet
+    }
+    throw error;
+  }
 };
 
 export const voteOnReview = async (

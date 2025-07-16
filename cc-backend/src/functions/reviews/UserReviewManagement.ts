@@ -131,11 +131,15 @@ async function getUserReviewForCourse(
 ): Promise<HttpResponseInit> {
   const review = await reviewService.getUserReviewForCourse(userId, courseId);
 
+  const reviewWithUser = review
+    ? await reviewService.populateUserDataInReview(review)
+    : null;
+
   return {
     status: 200,
     jsonBody: {
       success: true,
-      data: review,
+      data: reviewWithUser,
       hasReviewed: review !== null,
     },
   };

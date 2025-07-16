@@ -109,7 +109,7 @@ export class UserService {
         return null;
       }
 
-      return new UserEntity({
+      const user = new UserEntity({
         userId: userEntity.userId,
         discordId: userEntity.discordId,
         username: userEntity.username,
@@ -122,6 +122,8 @@ export class UserService {
         updatedAt: userEntity.updatedAt,
         lastLoginAt: userEntity.lastLoginAt,
       });
+
+      return user;
     } catch (error: any) {
       if (error.statusCode === 404) {
         return null;

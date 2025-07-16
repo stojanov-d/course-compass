@@ -115,11 +115,13 @@ async function createReview(
 
     const review = await reviewService.createReview(body);
 
+    const reviewWithUser = await reviewService.populateUserDataInReview(review);
+
     return {
       status: 201,
       jsonBody: {
         success: true,
-        data: review,
+        data: reviewWithUser,
       },
     };
   } catch (error: any) {
@@ -147,11 +149,13 @@ async function getReview(
     };
   }
 
+  const reviewWithUser = await reviewService.populateUserDataInReview(review);
+
   return {
     status: 200,
     jsonBody: {
       success: true,
-      data: review,
+      data: reviewWithUser,
     },
   };
 }
@@ -168,7 +172,7 @@ async function getReviewsForCourse(
   const continuationToken =
     url.searchParams.get('continuationToken') || undefined;
 
-  const result = await reviewService.getReviewsForCourse(courseId, {
+  const result = await reviewService.getReviewsForCourseWithUsers(courseId, {
     limit,
     continuationToken,
   });
@@ -207,11 +211,13 @@ async function updateReview(
       updateData
     );
 
+    const reviewWithUser = await reviewService.populateUserDataInReview(review);
+
     return {
       status: 200,
       jsonBody: {
         success: true,
-        data: review,
+        data: reviewWithUser,
       },
     };
   } catch (error: any) {

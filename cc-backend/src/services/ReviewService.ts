@@ -7,6 +7,7 @@ import {
   VoteResult,
 } from '../entities/VoteEntity';
 import { TableService } from './TableService';
+import { UserService } from './UserService';
 import { TABLE_NAMES } from '../config/tableStorage';
 
 export interface ReviewCreateData {
@@ -27,6 +28,28 @@ export interface CommentCreateData {
   parentCommentId?: string;
   commentText: string;
   isAnonymous: boolean;
+}
+
+export interface ReviewWithUser {
+  reviewId: string;
+  courseId: string;
+  authorId: string; // Always present - the actual user ID who wrote the review
+  user: {
+    id: string;
+    displayName: string;
+    avatarUrl?: string;
+  } | null;
+  rating: number;
+  difficulty: number;
+  workload: number;
+  recommendsCourse: boolean;
+  reviewText: string;
+  isAnonymous: boolean;
+  createdAt: string;
+  updatedAt: string;
+  upvotes: number;
+  downvotes: number;
+  commentsCount: number;
 }
 
 export interface VoteData {
@@ -52,12 +75,14 @@ export class ReviewService {
   private reviewsTable: TableClient;
   private commentsTable: TableClient;
   private votesTable: TableClient;
+  private userService: UserService;
 
   constructor() {
     this.tableService = new TableService();
     this.reviewsTable = this.tableService.getTableClient(TABLE_NAMES.REVIEWS);
     this.commentsTable = this.tableService.getTableClient(TABLE_NAMES.COMMENTS);
     this.votesTable = this.tableService.getTableClient(TABLE_NAMES.VOTES);
+    this.userService = new UserService();
   }
 
   async createReview(data: ReviewCreateData): Promise<ReviewEntity> {
@@ -152,6 +177,24 @@ export class ReviewService {
       console.error('Error getting reviews for course:', error);
       throw new Error(`Failed to get reviews: ${error.message}`);
     }
+  }
+
+  async getReviewsForCourseWithUsers(
+    courseId: string,
+    options: ReviewListOptions = {}
+  ): Promise<{
+    reviews: ReviewWithUser[];
+    continuationToken?: string;
+  }> {
+    const result = await this.getReviewsForCourse(courseId, options);
+    const reviewsWithUsers = await this.populateUserDataInReviews(
+      result.reviews
+    );
+
+    return {
+      reviews: reviewsWithUsers,
+      continuationToken: result.continuationToken,
+    };
   }
 
   async getUserReviewForCourse(
@@ -712,5 +755,53 @@ export class ReviewService {
       upvotes: entity.upvotes || 0,
       downvotes: entity.downvotes || 0,
     });
+  }
+
+  async populateUserDataInReviews(
+    reviews: ReviewEntity[]
+  ): Promise<ReviewWithUser[]> {
+    const populatedReviews: ReviewWithUser[] = [];
+
+    for (const review of reviews) {
+      const populatedReview = await this.populateUserDataInReview(review);
+      populatedReviews.push(populatedReview);
+    }
+
+    return populatedReviews;
+  }
+
+  async populateUserDataInReview(
+    review: ReviewEntity
+  ): Promise<ReviewWithUser> {
+    let user = null;
+
+    if (!review.isAnonymous) {
+      const userEntity = await this.userService.getUserById(review.userId);
+      if (userEntity) {
+        user = {
+          id: userEntity.userId,
+          displayName: userEntity.displayName,
+          avatarUrl: userEntity.avatarUrl,
+        };
+      }
+    }
+
+    return {
+      reviewId: review.reviewId,
+      courseId: review.courseId,
+      authorId: review.userId, // Always include the actual user ID
+      user: user,
+      rating: review.rating,
+      difficulty: review.difficulty,
+      workload: review.workload,
+      recommendsCourse: review.recommendsCourse,
+      reviewText: review.reviewText,
+      isAnonymous: review.isAnonymous,
+      createdAt: review.createdAt.toISOString(),
+      updatedAt: review.updatedAt.toISOString(),
+      upvotes: review.upvotes,
+      downvotes: review.downvotes,
+      commentsCount: 0, // TODO: Implement comment counting if needed
+    };
   }
 }

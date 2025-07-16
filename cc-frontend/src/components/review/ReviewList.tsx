@@ -7,7 +7,10 @@ interface ReviewListProps {
   loading: boolean;
   error: string | null;
   onVote: (reviewId: string, voteType: 'upvote' | 'downvote') => void;
+  onEdit?: (review: Review) => void;
+  onDelete?: (reviewId: string) => void;
   isVotingDisabled: boolean;
+  currentUserId?: string;
 }
 
 export const ReviewList = ({
@@ -15,8 +18,13 @@ export const ReviewList = ({
   loading,
   error,
   onVote,
+  onEdit,
+  onDelete,
   isVotingDisabled,
+  currentUserId,
 }: ReviewListProps) => {
+  const safeReviews = Array.isArray(reviews) ? reviews : [];
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" py={5}>
@@ -29,7 +37,7 @@ export const ReviewList = ({
     return <Alert severity="error">{error}</Alert>;
   }
 
-  if (reviews.length === 0) {
+  if (safeReviews.length === 0) {
     return (
       <Box textAlign="center" py={5}>
         <Typography variant="h6" color="text.secondary">
@@ -44,12 +52,15 @@ export const ReviewList = ({
 
   return (
     <Stack spacing={3}>
-      {reviews.map((review) => (
+      {safeReviews.map((review) => (
         <ReviewCard
           key={review.reviewId}
           review={review}
           onVote={onVote}
+          onEdit={onEdit}
+          onDelete={onDelete}
           isVotingDisabled={isVotingDisabled}
+          canEdit={Boolean(currentUserId && review.authorId === currentUserId)}
         />
       ))}
     </Stack>
