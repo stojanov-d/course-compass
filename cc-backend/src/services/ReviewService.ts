@@ -8,6 +8,7 @@ import {
 } from '../entities/VoteEntity';
 import { TableService } from './TableService';
 import { UserService } from './UserService';
+import { CourseService } from './CourseService';
 import { TABLE_NAMES } from '../config/tableStorage';
 
 export interface ReviewCreateData {
@@ -76,6 +77,7 @@ export class ReviewService {
   private commentsTable: TableClient;
   private votesTable: TableClient;
   private userService: UserService;
+  private courseService: CourseService;
 
   constructor() {
     this.tableService = new TableService();
@@ -83,6 +85,7 @@ export class ReviewService {
     this.commentsTable = this.tableService.getTableClient(TABLE_NAMES.COMMENTS);
     this.votesTable = this.tableService.getTableClient(TABLE_NAMES.VOTES);
     this.userService = new UserService();
+    this.courseService = new CourseService();
   }
 
   async createReview(data: ReviewCreateData): Promise<ReviewEntity> {
@@ -110,6 +113,8 @@ export class ReviewService {
 
       const userReviewEntity = review.toUserReviewEntity();
       await this.reviewsTable.createEntity(userReviewEntity);
+
+      await this.updateCourseStatistics(data.courseId);
 
       return review;
     } catch (error: any) {
@@ -256,6 +261,11 @@ export class ReviewService {
       };
 
       await this.reviewsTable.updateEntity(updatedReview, 'Replace');
+
+      if (updateData.rating !== undefined) {
+        await this.updateCourseStatistics(courseId);
+      }
+
       return this.mapEntityToReview(updatedReview);
     } catch (error: any) {
       console.error('Error updating review:', error);
@@ -285,6 +295,8 @@ export class ReviewService {
       await this.reviewsTable.deleteEntity(userPartitionKey, reviewId);
 
       await this.deleteCommentsForReview(reviewId);
+
+      await this.updateCourseStatistics(courseId);
     } catch (error: any) {
       console.error('Error deleting review:', error);
       throw new Error(`Failed to delete review: ${error.message}`);
@@ -491,6 +503,72 @@ export class ReviewService {
       console.error('Error voting on comment:', error);
       throw new Error(`Failed to vote on comment: ${error.message}`);
     }
+  }
+
+  private async updateCourseStatistics(courseId: string): Promise<void> {
+    try {
+      // First, we need to get the course to ensure we have the correct internal course ID
+      // The courseId parameter might be a course code, so we need to handle both cases
+      let course = await this.courseService.getCourseById(courseId);
+
+      if (!course) {
+        // Try to get by course code in case courseId is actually a course code
+        course = await this.courseService.getCourseByCode(courseId);
+        if (!course) {
+          console.error(`Course not found with ID or code: ${courseId}`);
+          return;
+        }
+      }
+
+      const reviews = await this.getReviewsForCourse(courseId);
+
+      if (reviews.reviews.length === 0) {
+        await this.courseService.updateCourseRating(course.courseId, 0, 0);
+        return;
+      }
+
+      const totalRating = reviews.reviews.reduce(
+        (sum, review) => sum + review.rating,
+        0
+      );
+      const averageRating = totalRating / reviews.reviews.length;
+
+      await this.courseService.updateCourseRating(
+        course.courseId,
+        averageRating,
+        reviews.reviews.length
+      );
+
+      console.log(
+        `Updated course ${course.courseCode} (${course.courseId}) statistics: ${averageRating.toFixed(2)} avg rating, ${reviews.reviews.length} total reviews`
+      );
+    } catch (error: any) {
+      console.error(`Error updating course statistics for ${courseId}:`, error);
+    }
+  }
+
+  async recalculateCourseStatistics(courseId: string): Promise<{
+    averageRating: number;
+    totalReviews: number;
+  }> {
+    await this.updateCourseStatistics(courseId);
+
+    // Return the calculated stats
+    const reviews = await this.getReviewsForCourse(courseId);
+    if (reviews.reviews.length === 0) {
+      return { averageRating: 0, totalReviews: 0 };
+    }
+
+    const totalRating = reviews.reviews.reduce(
+      (sum, review) => sum + review.rating,
+      0
+    );
+    const averageRating = totalRating / reviews.reviews.length;
+
+    return {
+      averageRating: Math.round(averageRating * 100) / 100, // Round to 2 decimal places
+      totalReviews: reviews.reviews.length,
+    };
   }
 
   private async processVote(voteData: VoteTrackingData): Promise<VoteResult> {
