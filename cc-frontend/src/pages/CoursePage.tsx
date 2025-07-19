@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router';
+import { useParams, useNavigate } from 'react-router';
 import {
   Container,
   Typography,
@@ -18,6 +18,7 @@ import {
   School as SchoolIcon,
   Person as PersonIcon,
   Add as AddIcon,
+  ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
 import { useCourse } from '../hooks/useCourses';
 import { useReviews } from '../hooks/useReviews';
@@ -29,6 +30,7 @@ import { CreateReviewData, UpdateReviewData } from '../api/reviewApi';
 
 const CourseDetailPage = () => {
   const { courseCode } = useParams<{ courseCode: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { course, loading, error, fetchCourseByCode } = useCourse();
   const {
@@ -169,6 +171,17 @@ const CourseDetailPage = () => {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
+      {/* Back Button */}
+      <Box mb={2}>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={() => navigate('/')}
+          variant="outlined"
+          sx={{ mb: 2 }}
+        >
+          Back to Courses
+        </Button>
+      </Box>
       <Paper elevation={2} sx={{ p: 4, borderRadius: 4 }}>
         {/* Course Header */}
         <Box mb={3}>
