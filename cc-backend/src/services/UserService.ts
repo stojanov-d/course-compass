@@ -48,6 +48,8 @@ export class UserService {
         createdAt: userEntity.createdAt,
         updatedAt: userEntity.updatedAt,
         lastLoginAt: userEntity.lastLoginAt,
+        refreshToken: userEntity.refreshToken,
+        refreshTokenExpiresAt: userEntity.refreshTokenExpiresAt,
       });
     } catch (error: any) {
       if (error.statusCode === 404) {
@@ -121,6 +123,8 @@ export class UserService {
         createdAt: userEntity.createdAt,
         updatedAt: userEntity.updatedAt,
         lastLoginAt: userEntity.lastLoginAt,
+        refreshToken: userEntity.refreshToken,
+        refreshTokenExpiresAt: userEntity.refreshTokenExpiresAt,
       });
 
       return user;
@@ -176,6 +180,8 @@ export class UserService {
           createdAt: entity.createdAt,
           updatedAt: entity.updatedAt,
           lastLoginAt: entity.lastLoginAt,
+          refreshToken: entity.refreshToken,
+          refreshTokenExpiresAt: entity.refreshTokenExpiresAt,
         });
         users.push(userEntity);
       }
@@ -224,6 +230,80 @@ export class UserService {
       );
     } catch (error: any) {
       console.error('Error searching users:', error);
+      throw error;
+    }
+  }
+
+  async updateRefreshToken(
+    userId: string,
+    refreshToken: string
+  ): Promise<void> {
+    const usersTable = this.tableService.getTableClient(TABLE_NAMES.USERS);
+    const user = await this.getUserById(userId);
+
+    if (user) {
+      user.refreshToken = refreshToken;
+      user.refreshTokenExpiresAt = new Date(
+        Date.now() + 30 * 24 * 60 * 60 * 1000
+      ); // 30 days
+      user.updatedAt = new Date();
+
+      await usersTable.updateEntity(user, 'Merge');
+    }
+  }
+
+  async getUserByRefreshToken(
+    refreshToken: string
+  ): Promise<UserEntity | null> {
+    const usersTable = this.tableService.getTableClient(TABLE_NAMES.USERS);
+
+    try {
+      const entities = usersTable.listEntities<UserEntity>({
+        queryOptions: {
+          filter: `refreshToken eq '${refreshToken}' and refreshTokenExpiresAt gt datetime'${new Date().toISOString()}'`,
+        },
+      });
+
+      for await (const entity of entities) {
+        return new UserEntity({
+          userId: entity.userId,
+          discordId: entity.discordId,
+          username: entity.username,
+          email: entity.email,
+          displayName: entity.displayName,
+          avatarUrl: entity.avatarUrl,
+          role: entity.role,
+          isActive: entity.isActive,
+          createdAt: entity.createdAt,
+          updatedAt: entity.updatedAt,
+          lastLoginAt: entity.lastLoginAt,
+          refreshToken: entity.refreshToken,
+          refreshTokenExpiresAt: entity.refreshTokenExpiresAt,
+        });
+      }
+
+      return null;
+    } catch (error: any) {
+      if (error.statusCode === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  async updateLastLoginTime(userId: string): Promise<void> {
+    try {
+      const usersTable = this.tableService.getTableClient(TABLE_NAMES.USERS);
+      const user = await this.getUserById(userId);
+
+      if (user) {
+        user.lastLoginAt = new Date();
+        user.updatedAt = new Date();
+
+        await usersTable.updateEntity(user, 'Merge');
+      }
+    } catch (error: any) {
+      console.error('Error updating last login time:', error);
       throw error;
     }
   }

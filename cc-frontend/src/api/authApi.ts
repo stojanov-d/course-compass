@@ -4,6 +4,7 @@ import apiClient from './apiClient';
 export interface AuthResponse {
   success: boolean;
   token: string;
+  refreshToken?: string;
   user: User;
 }
 
@@ -21,5 +22,12 @@ export const exchangeCodeForToken = async (
 
 export const getProfile = async (): Promise<User> => {
   const response = await apiClient.get('/auth/profile');
+  return response.data;
+};
+
+export const refreshAuthToken = async (
+  refreshToken: string
+): Promise<AuthResponse> => {
+  const response = await apiClient.post('/auth/refresh', { refreshToken });
   return response.data;
 };

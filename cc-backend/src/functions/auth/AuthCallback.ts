@@ -42,6 +42,12 @@ export async function AuthCallback(
     context.log('Creating/updating user in database');
     const user = await userService.createOrUpdateUser(discordUser);
 
+    context.log('Storing refresh token');
+    await userService.updateRefreshToken(
+      user.userId,
+      tokenResponse.refresh_token
+    );
+
     context.log('Generating JWT token');
     const jwtToken = jwtService.generateToken({
       userId: user.userId,
@@ -55,6 +61,7 @@ export async function AuthCallback(
       jsonBody: {
         success: true,
         token: jwtToken,
+        refreshToken: tokenResponse.refresh_token,
         user: {
           id: user.userId,
           username: user.username,

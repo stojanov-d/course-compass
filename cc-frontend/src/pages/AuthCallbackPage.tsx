@@ -19,8 +19,9 @@ const AuthCallbackPage = () => {
 
       if (code) {
         try {
-          const { token, user } = await exchangeCodeForToken(code);
-          login(token, user);
+          const { token, user, refreshToken } =
+            await exchangeCodeForToken(code);
+          login(token, user, refreshToken);
         } catch (error) {
           console.error('Authentication failed:', error);
         } finally {
