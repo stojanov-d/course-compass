@@ -72,4 +72,30 @@ export class DiscordAuthService {
 
     return await response.json();
   }
+
+  async refreshDiscordToken(
+    refreshToken: string
+  ): Promise<DiscordTokenResponse> {
+    const params = new URLSearchParams({
+      client_id: AUTH_CONFIG.DISCORD_CLIENT_ID,
+      client_secret: AUTH_CONFIG.DISCORD_CLIENT_SECRET,
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+    });
+
+    const response = await fetch(AUTH_CONFIG.DISCORD_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString(),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Discord token refresh failed: ${errorText}`);
+    }
+
+    return await response.json();
+  }
 }

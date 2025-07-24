@@ -4,8 +4,8 @@ import apiClient from './apiClient';
 export interface AuthResponse {
   success: boolean;
   token: string;
-  refreshToken?: string;
   user: User;
+  expiresAt: number;
 }
 
 export const getDiscordLoginUrl = async (): Promise<{ authUrl: string }> => {
@@ -25,9 +25,7 @@ export const getProfile = async (): Promise<User> => {
   return response.data;
 };
 
-export const refreshAuthToken = async (
-  refreshToken: string
-): Promise<AuthResponse> => {
-  const response = await apiClient.post('/auth/refresh', { refreshToken });
+export const renewToken = async (userId: string): Promise<AuthResponse> => {
+  const response = await apiClient.post('/auth/renew', { userId });
   return response.data;
 };

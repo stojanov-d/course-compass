@@ -42,7 +42,7 @@ export async function AuthCallback(
     context.log('Creating/updating user in database');
     const user = await userService.createOrUpdateUser(discordUser);
 
-    context.log('Storing refresh token');
+    context.log('Storing Discord refresh token');
     await userService.updateRefreshToken(
       user.userId,
       tokenResponse.refresh_token
@@ -56,12 +56,15 @@ export async function AuthCallback(
       role: user.role,
     });
 
+    // Calculate expiration time (30 days from now)
+    const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
+
     return {
       status: 200,
       jsonBody: {
         success: true,
         token: jwtToken,
-        refreshToken: tokenResponse.refresh_token,
+        expiresAt: expiresAt,
         user: {
           id: user.userId,
           username: user.username,

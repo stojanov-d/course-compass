@@ -12,7 +12,7 @@ import { UserProfileMenu } from '../components/common/UserProfileMenu';
 
 const HomePage = () => {
   const navigate = useNavigate();
-  const { user, isLoading, authRedirect, logout } = useAuth();
+  const { user, isLoading, login, logout } = useAuth();
   const {
     courses,
     loading,
@@ -48,11 +48,11 @@ const HomePage = () => {
 
   const handleDiscordLogin = useCallback(async () => {
     try {
-      await authRedirect();
+      await login();
     } catch (error) {
       console.error('Failed to initiate Discord login:', error);
     }
-  }, [authRedirect]);
+  }, [login]);
 
   if (isLoading) {
     return (
