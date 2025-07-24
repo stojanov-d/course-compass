@@ -848,6 +848,25 @@ export class ReviewService {
     return populatedReviews;
   }
 
+  private async getCommentsCountForReview(reviewId: string): Promise<number> {
+    try {
+      const partitionKey = `COMMENT_${reviewId}`;
+      const entities = this.commentsTable.listEntities({
+        queryOptions: { filter: `PartitionKey eq '${partitionKey}'` },
+      });
+
+      let count = 0;
+      for await (const _entity of entities) {
+        count++;
+      }
+
+      return count;
+    } catch (error: any) {
+      console.error('Error counting comments for review:', error);
+      return 0;
+    }
+  }
+
   async populateUserDataInReview(
     review: ReviewEntity
   ): Promise<ReviewWithUser> {
@@ -864,6 +883,8 @@ export class ReviewService {
       }
     }
 
+    const commentsCount = await this.getCommentsCountForReview(review.reviewId);
+
     return {
       reviewId: review.reviewId,
       courseId: review.courseId,
@@ -879,7 +900,7 @@ export class ReviewService {
       updatedAt: review.updatedAt.toISOString(),
       upvotes: review.upvotes,
       downvotes: review.downvotes,
-      commentsCount: 0, // TODO: Implement comment counting if needed
+      commentsCount: commentsCount,
     };
   }
 }

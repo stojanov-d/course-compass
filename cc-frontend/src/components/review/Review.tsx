@@ -6,23 +6,17 @@ import {
   Rating,
   Stack,
   Chip,
-  Button,
   IconButton,
   Menu,
   MenuItem,
   ListItemIcon,
   ListItemText,
 } from '@mui/material';
-import {
-  Comment,
-  CheckCircle,
-  MoreVert,
-  Edit,
-  Delete,
-} from '@mui/icons-material';
+import { CheckCircle, MoreVert, Edit, Delete } from '@mui/icons-material';
 import { useState } from 'react';
 import { Review } from '../../types/review';
 import { VoteButtons, ConfirmationModal } from '../common';
+import { CommentsSection } from './CommentsSection';
 
 interface ReviewCardProps {
   review: Review;
@@ -208,25 +202,13 @@ export const ReviewCard = ({
             justifyContent="space-between"
             alignItems="center"
           >
-            <Stack direction="row" spacing={1} alignItems="center">
-              <VoteButtons
-                upvotes={review.upvotes}
-                downvotes={review.downvotes}
-                onUpvote={() => onVote(review.reviewId, 'upvote')}
-                onDownvote={() => onVote(review.reviewId, 'downvote')}
-                disabled={isVotingDisabled}
-              />
-              <Button
-                startIcon={<Comment />}
-                size="small"
-                variant="text"
-                color="secondary"
-              >
-                {review.commentsCount > 0
-                  ? `${review.commentsCount} Comments`
-                  : 'Comment'}
-              </Button>
-            </Stack>
+            <VoteButtons
+              upvotes={review.upvotes}
+              downvotes={review.downvotes}
+              onUpvote={() => onVote(review.reviewId, 'upvote')}
+              onDownvote={() => onVote(review.reviewId, 'downvote')}
+              disabled={isVotingDisabled}
+            />
             {review.recommendsCourse && (
               <Chip
                 icon={<CheckCircle />}
@@ -237,6 +219,11 @@ export const ReviewCard = ({
               />
             )}
           </Stack>
+
+          <CommentsSection
+            reviewId={review.reviewId}
+            commentsCount={review.commentsCount}
+          />
         </Stack>
       </Paper>
 
