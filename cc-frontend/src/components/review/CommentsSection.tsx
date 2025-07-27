@@ -39,7 +39,10 @@ export const CommentsSection = ({
     comments,
     loading,
     error,
+    userVotes,
+    votingLoading,
     fetchComments,
+    fetchUserVoteStatuses,
     createComment,
     updateComment,
     deleteComment,
@@ -59,6 +62,14 @@ export const CommentsSection = ({
       onCommentsCountChange?.(comments.length);
     }
   }, [commentsLoaded, comments.length, onCommentsCountChange]);
+
+  // Fetch user vote statuses when comments are loaded and user is available
+  useEffect(() => {
+    if (user && comments && comments.length > 0) {
+      const commentIds = comments.map((comment) => comment.commentId);
+      fetchUserVoteStatuses(commentIds);
+    }
+  }, [user, comments, fetchUserVoteStatuses]);
 
   const handleToggleComments = () => {
     setShowComments(!showComments);
@@ -186,7 +197,9 @@ export const CommentsSection = ({
               onDelete={handleDeleteComment}
               onVote={handleVoteOnComment}
               canEdit={canEditComment(comment)}
-              isVotingDisabled={!user || user.id === comment.userId}
+              isVotingDisabled={!user}
+              userVote={userVotes[comment.commentId] || null}
+              isVotingLoading={votingLoading[comment.commentId] || false}
             />
           ))}
 

@@ -8,6 +8,7 @@ import {
   updateReview,
   deleteReview,
   getUserReviewForCourse,
+  getUserVoteStatus,
   CreateReviewData,
   UpdateReviewData,
 } from '../api/reviewApi';
@@ -18,6 +19,12 @@ export const useReviews = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, setContinuationToken] = useState<string | undefined>();
+  const [userVotes, setUserVotes] = useState<
+    Record<string, 'upvote' | 'downvote' | null>
+  >({});
+  const [votingLoading, setVotingLoading] = useState<Record<string, boolean>>(
+    {}
+  );
 
   const fetchReviews = useCallback(async (courseId: string) => {
     setLoading(true);
@@ -32,6 +39,33 @@ export const useReviews = () => {
       setReviews([]); // Reset to empty array on error
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  const fetchUserVoteStatuses = useCallback(async (reviewIds: string[]) => {
+    try {
+      const voteStatuses = await Promise.all(
+        reviewIds.map(async (reviewId) => {
+          try {
+            const response = await getUserVoteStatus('review', reviewId);
+            return { reviewId, voteType: response.data.voteType };
+          } catch {
+            return { reviewId, voteType: null };
+          }
+        })
+      );
+
+      const votesMap = voteStatuses.reduce(
+        (acc, { reviewId, voteType }) => {
+          acc[reviewId] = voteType;
+          return acc;
+        },
+        {} as Record<string, 'upvote' | 'downvote' | null>
+      );
+
+      setUserVotes(votesMap);
+    } catch (err: any) {
+      console.error('Failed to fetch user vote statuses:', err);
     }
   }, []);
 
@@ -118,8 +152,11 @@ export const useReviews = () => {
       courseId: string,
       voteType: 'upvote' | 'downvote'
     ) => {
+      setVotingLoading((prev) => ({ ...prev, [reviewId]: true }));
       try {
         const { data } = await voteOnReview(courseId, reviewId, voteType);
+
+        // Update reviews with new vote counts
         setReviews((currentReviews) => {
           const reviews = Array.isArray(currentReviews) ? currentReviews : [];
           return reviews.map((review) =>
@@ -132,10 +169,17 @@ export const useReviews = () => {
               : review
           );
         });
+
+        // Update user vote status
+        setUserVotes((prev) => ({
+          ...prev,
+          [reviewId]: data.voteResult?.currentVote || null,
+        }));
       } catch (error: any) {
         console.error('Failed to vote:', error);
-        //TODO: Handle error more gracefully in UI
         setError(error.response?.data?.error || 'Failed to cast vote');
+      } finally {
+        setVotingLoading((prev) => ({ ...prev, [reviewId]: false }));
       }
     },
     []
@@ -150,6 +194,8 @@ export const useReviews = () => {
     setUserReview(null);
     setError(null);
     setLoading(false);
+    setUserVotes({});
+    setVotingLoading({});
   }, []);
 
   return {
@@ -157,8 +203,11 @@ export const useReviews = () => {
     userReview,
     loading,
     error,
+    userVotes,
+    votingLoading,
     fetchReviews,
     fetchUserReview,
+    fetchUserVoteStatuses,
     addReview,
     editReview,
     removeReview,

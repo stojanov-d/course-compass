@@ -38,8 +38,11 @@ const CourseDetailPage = () => {
     userReview,
     loading: reviewsLoading,
     error: reviewsError,
+    userVotes,
+    votingLoading,
     fetchReviews,
     fetchUserReview,
+    fetchUserVoteStatuses,
     addReview,
     editReview,
     removeReview,
@@ -76,6 +79,13 @@ const CourseDetailPage = () => {
     resetState,
     lastCourseCode,
   ]);
+
+  useEffect(() => {
+    if (user && reviews && reviews.length > 0) {
+      const reviewIds = reviews.map((review) => review.reviewId);
+      fetchUserVoteStatuses(reviewIds);
+    }
+  }, [user, reviews, fetchUserVoteStatuses]);
 
   useEffect(() => {
     return () => {
@@ -308,6 +318,8 @@ const CourseDetailPage = () => {
           onDelete={handleDeleteReview}
           isVotingDisabled={!user}
           currentUserId={user?.id}
+          userVotes={userVotes}
+          votingLoading={votingLoading}
         />
       </Box>
 

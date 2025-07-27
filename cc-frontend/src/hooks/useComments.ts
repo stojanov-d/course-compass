@@ -11,6 +11,12 @@ export const useComments = (reviewId: string) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userVotes, setUserVotes] = useState<
+    Record<string, 'upvote' | 'downvote' | null>
+  >({});
+  const [votingLoading, setVotingLoading] = useState<Record<string, boolean>>(
+    {}
+  );
   const { user } = useAuth();
 
   const fetchComments = useCallback(async () => {
@@ -30,15 +36,52 @@ export const useComments = (reviewId: string) => {
                 displayName: user.displayName,
                 avatarUrl: user.avatarUrl,
               }
-            : comment.user,
+            : {
+                id: comment.userId,
+                displayName: 'User',
+                avatarUrl: '',
+              },
       }));
       setComments(enhancedComments);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load comments');
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to fetch comments';
+      setError(errorMessage);
+      setComments([]);
     } finally {
       setLoading(false);
     }
   }, [reviewId, user]);
+
+  const fetchUserVoteStatuses = useCallback(async (commentIds: string[]) => {
+    try {
+      const voteStatuses = await Promise.all(
+        commentIds.map(async (commentId) => {
+          try {
+            const response = await commentApi.getUserVoteStatus(
+              'comment',
+              commentId
+            );
+            return { commentId, voteType: response.data.voteType };
+          } catch {
+            return { commentId, voteType: null };
+          }
+        })
+      );
+
+      const votesMap = voteStatuses.reduce(
+        (acc, { commentId, voteType }) => {
+          acc[commentId] = voteType;
+          return acc;
+        },
+        {} as Record<string, 'upvote' | 'downvote' | null>
+      );
+
+      setUserVotes(votesMap);
+    } catch (err: unknown) {
+      console.error('Failed to fetch user vote statuses for comments:', err);
+    }
+  }, []);
 
   const createComment = useCallback(
     async (commentData: CreateCommentData) => {
@@ -114,6 +157,7 @@ export const useComments = (reviewId: string) => {
 
   const voteOnComment = useCallback(
     async (commentId: string, voteType: 'upvote' | 'downvote') => {
+      setVotingLoading((prev) => ({ ...prev, [commentId]: true }));
       setError(null);
       try {
         const response = await commentApi.voteOnComment(
@@ -121,6 +165,8 @@ export const useComments = (reviewId: string) => {
           commentId,
           voteType
         );
+
+        // Update comment vote counts
         setComments((prev) =>
           prev.map((comment) =>
             comment.commentId === commentId
@@ -132,11 +178,18 @@ export const useComments = (reviewId: string) => {
               : comment
           )
         );
+
+        setUserVotes((prev) => ({
+          ...prev,
+          [commentId]: voteType,
+        }));
       } catch (err: unknown) {
         setError(
           err instanceof Error ? err.message : 'Failed to vote on comment'
         );
         throw err;
+      } finally {
+        setVotingLoading((prev) => ({ ...prev, [commentId]: false }));
       }
     },
     [reviewId]
@@ -153,7 +206,10 @@ export const useComments = (reviewId: string) => {
     comments,
     loading,
     error,
+    userVotes,
+    votingLoading,
     fetchComments,
+    fetchUserVoteStatuses,
     createComment,
     updateComment,
     deleteComment,

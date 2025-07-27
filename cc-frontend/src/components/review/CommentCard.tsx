@@ -22,6 +22,8 @@ interface CommentCardProps {
   onVote: (commentId: string, voteType: 'upvote' | 'downvote') => void;
   canEdit: boolean;
   isVotingDisabled: boolean;
+  userVote?: 'upvote' | 'downvote' | null;
+  isVotingLoading?: boolean;
 }
 
 export const CommentCard = ({
@@ -31,6 +33,8 @@ export const CommentCard = ({
   onVote,
   canEdit,
   isVotingDisabled,
+  userVote = null,
+  isVotingLoading = false,
 }: CommentCardProps) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -128,6 +132,8 @@ export const CommentCard = ({
               onUpvote={() => onVote(comment.commentId, 'upvote')}
               onDownvote={() => onVote(comment.commentId, 'downvote')}
               disabled={isVotingDisabled}
+              userVote={userVote}
+              loading={isVotingLoading}
             />
           </Box>
         </Stack>

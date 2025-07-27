@@ -25,6 +25,8 @@ interface ReviewCardProps {
   onDelete?: (reviewId: string) => void;
   isVotingDisabled: boolean;
   canEdit?: boolean;
+  userVote?: 'upvote' | 'downvote' | null;
+  isVotingLoading?: boolean;
 }
 
 export const ReviewCard = ({
@@ -34,6 +36,8 @@ export const ReviewCard = ({
   onDelete,
   isVotingDisabled,
   canEdit = false,
+  userVote = null,
+  isVotingLoading = false,
 }: ReviewCardProps) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -208,6 +212,8 @@ export const ReviewCard = ({
               onUpvote={() => onVote(review.reviewId, 'upvote')}
               onDownvote={() => onVote(review.reviewId, 'downvote')}
               disabled={isVotingDisabled}
+              userVote={userVote}
+              loading={isVotingLoading}
             />
             {review.recommendsCourse && (
               <Chip

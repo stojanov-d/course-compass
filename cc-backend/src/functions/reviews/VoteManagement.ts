@@ -137,12 +137,6 @@ async function voteOnReview(
         jsonBody: { error: error.message },
       };
     }
-    if (error.message.includes('Cannot vote on your own')) {
-      return {
-        status: 403,
-        jsonBody: { error: error.message },
-      };
-    }
     throw error;
   }
 }
@@ -179,12 +173,6 @@ async function voteOnComment(
     if (error.message.includes('not found')) {
       return {
         status: 404,
-        jsonBody: { error: error.message },
-      };
-    }
-    if (error.message.includes('Cannot vote on your own')) {
-      return {
-        status: 403,
         jsonBody: { error: error.message },
       };
     }

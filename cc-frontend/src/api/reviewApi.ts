@@ -14,6 +14,14 @@ export interface VoteResponse {
     reviewId: string;
     upvotes: number;
     downvotes: number;
+    voteResult: {
+      success: boolean;
+      action: 'created' | 'updated' | 'removed';
+      previousVote?: 'upvote' | 'downvote' | null;
+      currentVote?: 'upvote' | 'downvote' | null;
+      upvotes: number;
+      downvotes: number;
+    };
   };
 }
 
@@ -105,6 +113,25 @@ export const voteOnReview = async (
   const response = await apiClient.post(
     `/vote/review/${courseId}/${reviewId}`,
     { voteType }
+  );
+  return response.data;
+};
+
+export interface VoteStatusResponse {
+  success: boolean;
+  data: {
+    hasVoted: boolean;
+    voteType: 'upvote' | 'downvote' | null;
+    votedAt: string | null;
+  };
+}
+
+export const getUserVoteStatus = async (
+  targetType: 'review' | 'comment',
+  targetId: string
+): Promise<VoteStatusResponse> => {
+  const response = await apiClient.get(
+    `/vote-status/${targetType}/${targetId}`
   );
   return response.data;
 };

@@ -65,3 +65,22 @@ export const voteOnComment = async (
   );
   return response.data;
 };
+
+export interface VoteStatusResponse {
+  success: boolean;
+  data: {
+    hasVoted: boolean;
+    voteType: 'upvote' | 'downvote' | null;
+    votedAt: string | null;
+  };
+}
+
+export const getUserVoteStatus = async (
+  targetType: 'review' | 'comment',
+  targetId: string
+): Promise<VoteStatusResponse> => {
+  const response = await apiClient.get(
+    `/vote-status/${targetType}/${targetId}`
+  );
+  return response.data;
+};

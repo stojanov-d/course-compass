@@ -431,10 +431,6 @@ export class ReviewService {
         throw new Error('Review not found');
       }
 
-      if (review.userId === voteData.userId) {
-        throw new Error('Cannot vote on your own review');
-      }
-
       const voteTrackingData: VoteTrackingData = {
         userId: voteData.userId,
         voteType: voteData.voteType,
@@ -474,11 +470,6 @@ export class ReviewService {
 
       if (!entity) {
         throw new Error('Comment not found');
-      }
-
-      const comment = this.mapEntityToComment(entity);
-      if (comment.userId === voteData.userId) {
-        throw new Error('Cannot vote on your own comment');
       }
 
       const voteTrackingData: VoteTrackingData = {

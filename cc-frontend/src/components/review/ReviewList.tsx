@@ -11,6 +11,8 @@ interface ReviewListProps {
   onDelete?: (reviewId: string) => void;
   isVotingDisabled: boolean;
   currentUserId?: string;
+  userVotes?: Record<string, 'upvote' | 'downvote' | null>;
+  votingLoading?: Record<string, boolean>;
 }
 
 export const ReviewList = ({
@@ -22,6 +24,8 @@ export const ReviewList = ({
   onDelete,
   isVotingDisabled,
   currentUserId,
+  userVotes = {},
+  votingLoading = {},
 }: ReviewListProps) => {
   const safeReviews = Array.isArray(reviews) ? reviews : [];
 
@@ -61,6 +65,8 @@ export const ReviewList = ({
           onDelete={onDelete}
           isVotingDisabled={isVotingDisabled}
           canEdit={Boolean(currentUserId && review.authorId === currentUserId)}
+          userVote={userVotes[review.reviewId] || null}
+          isVotingLoading={votingLoading[review.reviewId] || false}
         />
       ))}
     </Stack>
