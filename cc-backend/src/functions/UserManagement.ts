@@ -14,6 +14,9 @@ export async function GetAllUsers(
 ): Promise<HttpResponseInit> {
   const authResult = await requireAdmin(request);
   if (!authResult.isValid || !authResult.user) {
+    context.warn(
+      `Unauthorized admin access attempt from IP: ${request.headers.get('x-forwarded-for') || 'unknown'}`
+    );
     return {
       status: 403,
       jsonBody: {
@@ -65,6 +68,9 @@ export async function UpdateUserRole(
 ): Promise<HttpResponseInit> {
   const authResult = await requireAdmin(request);
   if (!authResult.isValid || !authResult.user) {
+    context.warn(
+      `Unauthorized role update attempt from IP: ${request.headers.get('x-forwarded-for') || 'unknown'}`
+    );
     return {
       status: 403,
       jsonBody: {
@@ -119,7 +125,15 @@ export async function UpdateUserRole(
     }
 
     context.log(
-      `Admin ${authResult.user.userId} updated user ${userId} role to ${body.role}`
+      `Admin ${authResult.user.userId} updated user ${userId} role to ${body.role}`,
+      {
+        adminId: authResult.user.userId,
+        targetUserId: userId,
+        oldRole: updatedUser ? 'unknown' : 'not found',
+        newRole: body.role,
+        timestamp: new Date().toISOString(),
+        action: 'UPDATE_USER_ROLE',
+      }
     );
 
     return {
@@ -154,6 +168,9 @@ export async function ToggleUserStatus(
 ): Promise<HttpResponseInit> {
   const authResult = await requireAdmin(request);
   if (!authResult.isValid || !authResult.user) {
+    context.warn(
+      `Unauthorized status toggle attempt from IP: ${request.headers.get('x-forwarded-for') || 'unknown'}`
+    );
     return {
       status: 403,
       jsonBody: {
@@ -174,7 +191,6 @@ export async function ToggleUserStatus(
       };
     }
 
-    // Prevent admins from deactivating themselves
     if (userId === authResult.user.userId) {
       return {
         status: 400,
@@ -197,7 +213,13 @@ export async function ToggleUserStatus(
     }
 
     const action = updatedUser.isActive ? 'activated' : 'deactivated';
-    context.log(`Admin ${authResult.user.userId} ${action} user ${userId}`);
+    context.log(`Admin ${authResult.user.userId} ${action} user ${userId}`, {
+      adminId: authResult.user.userId,
+      targetUserId: userId,
+      newStatus: updatedUser.isActive,
+      timestamp: new Date().toISOString(),
+      action: 'TOGGLE_USER_STATUS',
+    });
 
     return {
       status: 200,
@@ -231,6 +253,9 @@ export async function GetUserDetails(
 ): Promise<HttpResponseInit> {
   const authResult = await requireAdmin(request);
   if (!authResult.isValid || !authResult.user) {
+    context.warn(
+      `Unauthorized user details access attempt from IP: ${request.headers.get('x-forwarded-for') || 'unknown'}`
+    );
     return {
       status: 403,
       jsonBody: {
