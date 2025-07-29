@@ -71,6 +71,22 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
         { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'node' }
         { name: 'WEBSITE_RUN_FROM_PACKAGE', value: '1' }
         { name: 'StorageAccountName', value: storageAccountName }
+        {
+          name: 'DISCORD_CLIENT_ID'
+          value: '@Microsoft.KeyVault(SecretUri=https://${keyVaultName}${environment().suffixes.keyvaultDns}/secrets/DiscordClientID/)'
+        }
+        {
+          name: 'DISCORD_CLIENT_SECRET'
+          value: '@Microsoft.KeyVault(SecretUri=https://${keyVaultName}${environment().suffixes.keyvaultDns}/secrets/DiscordClientSecret/)'
+        }
+        {
+          name: 'DISCORD_REDIRECT_URI'
+          value: 'https://${functionAppBaseName}.azurewebsites.net/api/auth/callback'
+        }
+        {
+          name: 'JWT_SECRET'
+          value: '@Microsoft.KeyVault(SecretUri=https://${keyVaultName}${environment().suffixes.keyvaultDns}/secrets/JwtSecret/)'
+        }
       ]
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
