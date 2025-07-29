@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { exchangeCodeForToken } from '../api/authApi';
 
 const AuthCallbackPage = () => {
-  const { login } = useAuth();
+  const { setSession } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const hasRun = useRef(false);
@@ -19,8 +19,8 @@ const AuthCallbackPage = () => {
 
       if (code) {
         try {
-          const { token, user } = await exchangeCodeForToken(code);
-          login(token, user);
+          const { token, user, expiresAt } = await exchangeCodeForToken(code);
+          setSession({ token, user, expiresAt });
         } catch (error) {
           console.error('Authentication failed:', error);
         } finally {
@@ -33,7 +33,7 @@ const AuthCallbackPage = () => {
     };
 
     handleAuthCallback();
-  }, [login, navigate, location]);
+  }, [setSession, navigate, location]);
 
   return <div>Authenticating...</div>;
 };

@@ -246,8 +246,8 @@ export const useCourse = (): UseCourseResult => {
     setError(null);
 
     try {
-      const courseData = await getCourseById(courseId);
-      setCourse(courseData);
+      const response = await getCourseById(courseId);
+      setCourse(response);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to fetch course');
       setCourse(null);
@@ -261,8 +261,8 @@ export const useCourse = (): UseCourseResult => {
     setError(null);
 
     try {
-      const courseData = await getCourseByCode(courseCode);
-      setCourse(courseData);
+      const response = await getCourseByCode(courseCode);
+      setCourse(response);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to fetch course');
       setCourse(null);

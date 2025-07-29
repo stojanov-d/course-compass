@@ -16,7 +16,7 @@ interface CourseListProps {
   loading: boolean;
   error: string | null;
   total: number;
-  onCourseClick: (courseId: string) => void;
+  onCourseClick: (courseCode: string) => void;
   activeStudyProgram?: string;
 }
 
@@ -102,7 +102,7 @@ export const CourseList = ({
         {currentCourses.map((course, index) => (
           <Grid
             size={{ xs: 12, sm: 6, md: 4 }}
-            key={course.courseId || `course-${index}`}
+            key={course.courseCode || `course-${index}`}
           >
             <CourseCard
               course={course}

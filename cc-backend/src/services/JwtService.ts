@@ -19,7 +19,7 @@ export class JwtService {
     };
 
     const now = Math.floor(Date.now() / 1000);
-    const exp = now + 7 * 24 * 60 * 60; // 7 days
+    const exp = now + 30 * 24 * 60 * 60; // 30 days
 
     const jwtPayload: JwtPayload = {
       ...payload,

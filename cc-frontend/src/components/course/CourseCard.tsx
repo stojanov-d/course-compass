@@ -22,8 +22,10 @@ export const CourseCard = ({
   onClick,
   activeStudyProgram,
 }: CourseCardProps) => {
-  const handleClick = () => {
-    onClick(course.courseId);
+  const handleCardClick = () => {
+    if (course.courseCode) {
+      onClick(course.courseCode);
+    }
   };
 
   const getLevelColor = (level?: string) => {
@@ -73,7 +75,7 @@ export const CourseCard = ({
         },
       }}
     >
-      <CardActionArea onClick={handleClick} sx={{ height: '100%' }}>
+      <CardActionArea onClick={handleCardClick} sx={{ height: '100%' }}>
         <CardContent
           sx={{
             p: 3,

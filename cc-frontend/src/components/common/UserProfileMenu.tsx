@@ -10,10 +10,12 @@ import {
   ListItemText,
 } from '@mui/material';
 import {
+  AdminPanelSettings as AdminIcon,
   Logout as LogoutIcon,
   Person as PersonIcon,
 } from '@mui/icons-material';
 import { User } from '../../types/user';
+import { useNavigate } from 'react-router';
 
 interface UserProfileMenuProps {
   user: User;
@@ -22,6 +24,7 @@ interface UserProfileMenuProps {
 
 export const UserProfileMenu = ({ user, onLogout }: UserProfileMenuProps) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const navigate = useNavigate();
   const open = Boolean(anchorEl);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -35,6 +38,11 @@ export const UserProfileMenu = ({ user, onLogout }: UserProfileMenuProps) => {
   const handleLogout = () => {
     handleClose();
     onLogout();
+  };
+
+  const handleAdminDashboard = () => {
+    handleClose();
+    navigate('/admin');
   };
 
   return (
@@ -90,6 +98,14 @@ export const UserProfileMenu = ({ user, onLogout }: UserProfileMenuProps) => {
           </ListItemIcon>
           <ListItemText>Profile</ListItemText>
         </MenuItem>
+        {user.isAdmin && (
+          <MenuItem onClick={handleAdminDashboard}>
+            <ListItemIcon>
+              <AdminIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Admin Dashboard</ListItemText>
+          </MenuItem>
+        )}
         <MenuItem onClick={handleLogout}>
           <ListItemIcon>
             <LogoutIcon fontSize="small" />

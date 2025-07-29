@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { useNavigate } from 'react-router';
 import { Box, Container, Typography, Stack, Button, Fade } from '@mui/material';
 import { School as SchoolIcon } from '@mui/icons-material';
 import { CourseFilters } from '../components/course/CourseFilters';
@@ -10,7 +11,8 @@ import { SearchBar } from '../components/common/SearchBar';
 import { UserProfileMenu } from '../components/common/UserProfileMenu';
 
 const HomePage = () => {
-  const { user, isLoading, authRedirect, logout } = useAuth();
+  const navigate = useNavigate();
+  const { user, isLoading, login, logout } = useAuth();
   const {
     courses,
     loading,
@@ -37,17 +39,20 @@ const HomePage = () => {
     [searchCourses]
   );
 
-  const handleCourseClick = useCallback((courseId: string) => {
-    console.log('Navigate to course:', courseId);
-  }, []);
+  const handleCourseClick = useCallback(
+    (courseCode: string) => {
+      navigate(`/course/${courseCode}`);
+    },
+    [navigate]
+  );
 
   const handleDiscordLogin = useCallback(async () => {
     try {
-      await authRedirect();
+      await login();
     } catch (error) {
       console.error('Failed to initiate Discord login:', error);
     }
-  }, [authRedirect]);
+  }, [login]);
 
   if (isLoading) {
     return (

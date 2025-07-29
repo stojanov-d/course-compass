@@ -7,6 +7,8 @@ import {
   VoteResult,
 } from '../entities/VoteEntity';
 import { TableService } from './TableService';
+import { UserService } from './UserService';
+import { CourseService } from './CourseService';
 import { TABLE_NAMES } from '../config/tableStorage';
 
 export interface ReviewCreateData {
@@ -27,6 +29,28 @@ export interface CommentCreateData {
   parentCommentId?: string;
   commentText: string;
   isAnonymous: boolean;
+}
+
+export interface ReviewWithUser {
+  reviewId: string;
+  courseId: string;
+  authorId: string; // Always present - the actual user ID who wrote the review
+  user: {
+    id: string;
+    displayName: string;
+    avatarUrl?: string;
+  } | null;
+  rating: number;
+  difficulty: number;
+  workload: number;
+  recommendsCourse: boolean;
+  reviewText: string;
+  isAnonymous: boolean;
+  createdAt: string;
+  updatedAt: string;
+  upvotes: number;
+  downvotes: number;
+  commentsCount: number;
 }
 
 export interface VoteData {
@@ -52,12 +76,16 @@ export class ReviewService {
   private reviewsTable: TableClient;
   private commentsTable: TableClient;
   private votesTable: TableClient;
+  private userService: UserService;
+  private courseService: CourseService;
 
   constructor() {
     this.tableService = new TableService();
     this.reviewsTable = this.tableService.getTableClient(TABLE_NAMES.REVIEWS);
     this.commentsTable = this.tableService.getTableClient(TABLE_NAMES.COMMENTS);
     this.votesTable = this.tableService.getTableClient(TABLE_NAMES.VOTES);
+    this.userService = new UserService();
+    this.courseService = new CourseService();
   }
 
   async createReview(data: ReviewCreateData): Promise<ReviewEntity> {
@@ -85,6 +113,8 @@ export class ReviewService {
 
       const userReviewEntity = review.toUserReviewEntity();
       await this.reviewsTable.createEntity(userReviewEntity);
+
+      await this.updateCourseStatistics(data.courseId);
 
       return review;
     } catch (error: any) {
@@ -154,6 +184,24 @@ export class ReviewService {
     }
   }
 
+  async getReviewsForCourseWithUsers(
+    courseId: string,
+    options: ReviewListOptions = {}
+  ): Promise<{
+    reviews: ReviewWithUser[];
+    continuationToken?: string;
+  }> {
+    const result = await this.getReviewsForCourse(courseId, options);
+    const reviewsWithUsers = await this.populateUserDataInReviews(
+      result.reviews
+    );
+
+    return {
+      reviews: reviewsWithUsers,
+      continuationToken: result.continuationToken,
+    };
+  }
+
   async getUserReviewForCourse(
     userId: string,
     courseId: string
@@ -213,6 +261,11 @@ export class ReviewService {
       };
 
       await this.reviewsTable.updateEntity(updatedReview, 'Replace');
+
+      if (updateData.rating !== undefined) {
+        await this.updateCourseStatistics(courseId);
+      }
+
       return this.mapEntityToReview(updatedReview);
     } catch (error: any) {
       console.error('Error updating review:', error);
@@ -242,8 +295,32 @@ export class ReviewService {
       await this.reviewsTable.deleteEntity(userPartitionKey, reviewId);
 
       await this.deleteCommentsForReview(reviewId);
+
+      await this.updateCourseStatistics(courseId);
     } catch (error: any) {
       console.error('Error deleting review:', error);
+      throw new Error(`Failed to delete review: ${error.message}`);
+    }
+  }
+
+  async adminDeleteReview(reviewId: string, courseId: string): Promise<void> {
+    try {
+      const review = await this.getReviewById(reviewId, courseId);
+      if (!review) {
+        throw new Error('Review not found');
+      }
+
+      const partitionKey = `REVIEW_${courseId}`;
+      await this.reviewsTable.deleteEntity(partitionKey, reviewId);
+
+      const userPartitionKey = `USER_REVIEWS_${review.userId}`;
+      await this.reviewsTable.deleteEntity(userPartitionKey, reviewId);
+
+      await this.deleteCommentsForReview(reviewId);
+
+      await this.updateCourseStatistics(courseId);
+    } catch (error: any) {
+      console.error('Error deleting review (admin):', error);
       throw new Error(`Failed to delete review: ${error.message}`);
     }
   }
@@ -365,6 +442,25 @@ export class ReviewService {
     }
   }
 
+  async adminDeleteComment(commentId: string, reviewId: string): Promise<void> {
+    try {
+      const partitionKey = `COMMENT_${reviewId}`;
+      const entity = await this.commentsTable.getEntity(
+        partitionKey,
+        commentId
+      );
+
+      if (!entity) {
+        throw new Error('Comment not found');
+      }
+
+      await this.commentsTable.deleteEntity(partitionKey, commentId);
+    } catch (error: any) {
+      console.error('Error deleting comment (admin):', error);
+      throw new Error(`Failed to delete comment: ${error.message}`);
+    }
+  }
+
   async voteOnReview(
     reviewId: string,
     courseId: string,
@@ -374,10 +470,6 @@ export class ReviewService {
       const review = await this.getReviewById(reviewId, courseId);
       if (!review) {
         throw new Error('Review not found');
-      }
-
-      if (review.userId === voteData.userId) {
-        throw new Error('Cannot vote on your own review');
       }
 
       const voteTrackingData: VoteTrackingData = {
@@ -421,11 +513,6 @@ export class ReviewService {
         throw new Error('Comment not found');
       }
 
-      const comment = this.mapEntityToComment(entity);
-      if (comment.userId === voteData.userId) {
-        throw new Error('Cannot vote on your own comment');
-      }
-
       const voteTrackingData: VoteTrackingData = {
         userId: voteData.userId,
         voteType: voteData.voteType,
@@ -448,6 +535,72 @@ export class ReviewService {
       console.error('Error voting on comment:', error);
       throw new Error(`Failed to vote on comment: ${error.message}`);
     }
+  }
+
+  private async updateCourseStatistics(courseId: string): Promise<void> {
+    try {
+      // First, we need to get the course to ensure we have the correct internal course ID
+      // The courseId parameter might be a course code, so we need to handle both cases
+      let course = await this.courseService.getCourseById(courseId);
+
+      if (!course) {
+        // Try to get by course code in case courseId is actually a course code
+        course = await this.courseService.getCourseByCode(courseId);
+        if (!course) {
+          console.error(`Course not found with ID or code: ${courseId}`);
+          return;
+        }
+      }
+
+      const reviews = await this.getReviewsForCourse(courseId);
+
+      if (reviews.reviews.length === 0) {
+        await this.courseService.updateCourseRating(course.courseId, 0, 0);
+        return;
+      }
+
+      const totalRating = reviews.reviews.reduce(
+        (sum, review) => sum + review.rating,
+        0
+      );
+      const averageRating = totalRating / reviews.reviews.length;
+
+      await this.courseService.updateCourseRating(
+        course.courseId,
+        averageRating,
+        reviews.reviews.length
+      );
+
+      console.log(
+        `Updated course ${course.courseCode} (${course.courseId}) statistics: ${averageRating.toFixed(2)} avg rating, ${reviews.reviews.length} total reviews`
+      );
+    } catch (error: any) {
+      console.error(`Error updating course statistics for ${courseId}:`, error);
+    }
+  }
+
+  async recalculateCourseStatistics(courseId: string): Promise<{
+    averageRating: number;
+    totalReviews: number;
+  }> {
+    await this.updateCourseStatistics(courseId);
+
+    // Return the calculated stats
+    const reviews = await this.getReviewsForCourse(courseId);
+    if (reviews.reviews.length === 0) {
+      return { averageRating: 0, totalReviews: 0 };
+    }
+
+    const totalRating = reviews.reviews.reduce(
+      (sum, review) => sum + review.rating,
+      0
+    );
+    const averageRating = totalRating / reviews.reviews.length;
+
+    return {
+      averageRating: Math.round(averageRating * 100) / 100, // Round to 2 decimal places
+      totalReviews: reviews.reviews.length,
+    };
   }
 
   private async processVote(voteData: VoteTrackingData): Promise<VoteResult> {
@@ -712,5 +865,74 @@ export class ReviewService {
       upvotes: entity.upvotes || 0,
       downvotes: entity.downvotes || 0,
     });
+  }
+
+  async populateUserDataInReviews(
+    reviews: ReviewEntity[]
+  ): Promise<ReviewWithUser[]> {
+    const populatedReviews: ReviewWithUser[] = [];
+
+    for (const review of reviews) {
+      const populatedReview = await this.populateUserDataInReview(review);
+      populatedReviews.push(populatedReview);
+    }
+
+    return populatedReviews;
+  }
+
+  private async getCommentsCountForReview(reviewId: string): Promise<number> {
+    try {
+      const partitionKey = `COMMENT_${reviewId}`;
+      const entities = this.commentsTable.listEntities({
+        queryOptions: { filter: `PartitionKey eq '${partitionKey}'` },
+      });
+
+      let count = 0;
+      for await (const _entity of entities) {
+        count++;
+      }
+
+      return count;
+    } catch (error: any) {
+      console.error('Error counting comments for review:', error);
+      return 0;
+    }
+  }
+
+  async populateUserDataInReview(
+    review: ReviewEntity
+  ): Promise<ReviewWithUser> {
+    let user = null;
+
+    if (!review.isAnonymous) {
+      const userEntity = await this.userService.getUserById(review.userId);
+      if (userEntity) {
+        user = {
+          id: userEntity.userId,
+          displayName: userEntity.displayName,
+          avatarUrl: userEntity.avatarUrl,
+        };
+      }
+    }
+
+    const commentsCount = await this.getCommentsCountForReview(review.reviewId);
+
+    return {
+      reviewId: review.reviewId,
+      courseId: review.courseId,
+      authorId: review.userId, // Always include the actual user ID
+      user: user,
+      rating: review.rating,
+      difficulty: review.difficulty,
+      workload: review.workload,
+      recommendsCourse: review.recommendsCourse,
+      reviewText: review.reviewText,
+      isAnonymous: review.isAnonymous,
+      createdAt: review.createdAt.toISOString(),
+      updatedAt: review.updatedAt.toISOString(),
+      upvotes: review.upvotes,
+      downvotes: review.downvotes,
+      commentsCount: commentsCount,
+    };
   }
 }

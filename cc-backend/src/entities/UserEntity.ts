@@ -17,6 +17,8 @@ export interface IUserEntity {
   createdAt: Date;
   updatedAt: Date;
   lastLoginAt?: Date;
+  refreshToken?: string;
+  refreshTokenExpiresAt?: Date;
 }
 
 export class UserEntity extends BaseTableEntity implements IUserEntity {
@@ -31,6 +33,8 @@ export class UserEntity extends BaseTableEntity implements IUserEntity {
   public createdAt: Date;
   public updatedAt: Date;
   public lastLoginAt?: Date;
+  public refreshToken?: string;
+  public refreshTokenExpiresAt?: Date;
 
   constructor(data: Omit<IUserEntity, 'userId'> & { userId?: string }) {
     const userId = data.userId || crypto.randomUUID();
@@ -47,6 +51,8 @@ export class UserEntity extends BaseTableEntity implements IUserEntity {
     this.createdAt = data.createdAt;
     this.updatedAt = data.updatedAt;
     this.lastLoginAt = data.lastLoginAt;
+    this.refreshToken = data.refreshToken;
+    this.refreshTokenExpiresAt = data.refreshTokenExpiresAt;
   }
 
   public toDiscordLookupEntity(): UserDiscordLookupEntity {
