@@ -258,10 +258,9 @@ export class UserService {
     const usersTable = this.tableService.getTableClient(TABLE_NAMES.USERS);
 
     try {
-      const sanitizedRefreshToken = this.escapeFilterValue(refreshToken);
       const entities = usersTable.listEntities<UserEntity>({
         queryOptions: {
-          filter: `refreshToken eq '${sanitizedRefreshToken}' and refreshTokenExpiresAt gt datetime'${new Date().toISOString()}'`,
+          filter: `refreshToken eq '${refreshToken}' and refreshTokenExpiresAt gt datetime'${new Date().toISOString()}'`,
         },
       });
 
