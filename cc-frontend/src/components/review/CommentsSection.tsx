@@ -46,6 +46,7 @@ export const CommentsSection = ({
     createComment,
     updateComment,
     deleteComment,
+    adminDeleteComment,
     voteOnComment,
     canEditComment,
   } = useComments(reviewId);
@@ -138,6 +139,15 @@ export const CommentsSection = ({
     }
   };
 
+  const handleAdminDeleteComment = async (commentId: string) => {
+    try {
+      await adminDeleteComment(commentId);
+      setCurrentCommentsCount((prev) => Math.max(prev - 1, 0));
+    } catch {
+      // Error is handled by the hook
+    }
+  };
+
   const handleVoteOnComment = async (
     commentId: string,
     voteType: 'upvote' | 'downvote'
@@ -195,8 +205,10 @@ export const CommentsSection = ({
               comment={comment}
               onEdit={handleEditComment}
               onDelete={handleDeleteComment}
+              onAdminDelete={handleAdminDeleteComment}
               onVote={handleVoteOnComment}
               canEdit={canEditComment(comment)}
+              canAdminDelete={user?.isAdmin && comment.userId !== user?.id}
               isVotingDisabled={!user}
               userVote={userVotes[comment.commentId] || null}
               isVotingLoading={votingLoading[comment.commentId] || false}

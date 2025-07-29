@@ -19,8 +19,10 @@ interface CommentCardProps {
   comment: Comment;
   onEdit?: (comment: Comment) => void;
   onDelete?: (commentId: string) => void;
+  onAdminDelete?: (commentId: string) => void;
   onVote: (commentId: string, voteType: 'upvote' | 'downvote') => void;
   canEdit: boolean;
+  canAdminDelete?: boolean;
   isVotingDisabled: boolean;
   userVote?: 'upvote' | 'downvote' | null;
   isVotingLoading?: boolean;
@@ -30,14 +32,17 @@ export const CommentCard = ({
   comment,
   onEdit,
   onDelete,
+  onAdminDelete,
   onVote,
   canEdit,
+  canAdminDelete = false,
   isVotingDisabled,
   userVote = null,
   isVotingLoading = false,
 }: CommentCardProps) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [adminDeleteModalOpen, setAdminDeleteModalOpen] = useState(false);
   const open = Boolean(anchorEl);
 
   const userDisplay = comment.isAnonymous
@@ -67,13 +72,27 @@ export const CommentCard = ({
     setDeleteModalOpen(true);
   };
 
+  const handleAdminDeleteClick = () => {
+    handleMenuClose();
+    setAdminDeleteModalOpen(true);
+  };
+
   const handleDeleteConfirm = () => {
     onDelete?.(comment.commentId);
     setDeleteModalOpen(false);
   };
 
+  const handleAdminDeleteConfirm = () => {
+    onAdminDelete?.(comment.commentId);
+    setAdminDeleteModalOpen(false);
+  };
+
   const handleDeleteCancel = () => {
     setDeleteModalOpen(false);
+  };
+
+  const handleAdminDeleteCancel = () => {
+    setAdminDeleteModalOpen(false);
   };
 
   return (
@@ -110,7 +129,7 @@ export const CommentCard = ({
                 </Typography>
               </Box>
             </Box>
-            {canEdit && (
+            {(canEdit || canAdminDelete) && (
               <IconButton
                 size="small"
                 onClick={handleMenuOpen}
@@ -147,18 +166,30 @@ export const CommentCard = ({
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
-        <MenuItem onClick={handleEdit}>
-          <ListItemIcon>
-            <Edit fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Edit Comment</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={handleDeleteClick}>
-          <ListItemIcon>
-            <Delete fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Delete Comment</ListItemText>
-        </MenuItem>
+        {canEdit && onEdit && (
+          <MenuItem onClick={handleEdit}>
+            <ListItemIcon>
+              <Edit fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Edit Comment</ListItemText>
+          </MenuItem>
+        )}
+        {canEdit && onDelete && (
+          <MenuItem onClick={handleDeleteClick}>
+            <ListItemIcon>
+              <Delete fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Delete Comment</ListItemText>
+          </MenuItem>
+        )}
+        {canAdminDelete && onAdminDelete && (
+          <MenuItem onClick={handleAdminDeleteClick}>
+            <ListItemIcon>
+              <Delete fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Delete Comment (Admin)</ListItemText>
+          </MenuItem>
+        )}
       </Menu>
 
       {/* Delete Confirmation Modal */}
@@ -169,6 +200,19 @@ export const CommentCard = ({
         title="Delete Comment"
         message="Are you sure you want to delete this comment? This action cannot be undone."
         confirmText="Delete"
+        cancelText="Cancel"
+        confirmColor="error"
+        showIcon={true}
+      />
+
+      {/* Admin Delete Confirmation Modal */}
+      <ConfirmationModal
+        open={adminDeleteModalOpen}
+        onClose={handleAdminDeleteCancel}
+        onConfirm={handleAdminDeleteConfirm}
+        title="Delete Comment (Admin)"
+        message="Are you sure you want to delete this comment as an admin? This action cannot be undone."
+        confirmText="Delete as Admin"
         cancelText="Cancel"
         confirmColor="error"
         showIcon={true}

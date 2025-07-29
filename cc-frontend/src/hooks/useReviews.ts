@@ -12,6 +12,7 @@ import {
   CreateReviewData,
   UpdateReviewData,
 } from '../api/reviewApi';
+import { adminApi } from '../api/adminApi';
 
 export const useReviews = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -146,6 +147,27 @@ export const useReviews = () => {
     []
   );
 
+  const adminRemoveReview = useCallback(
+    async (courseId: string, reviewId: string) => {
+      try {
+        await adminApi.deleteReview(courseId, reviewId);
+        setReviews((prevReviews) => {
+          const currentReviews = Array.isArray(prevReviews) ? prevReviews : [];
+          return currentReviews.filter(
+            (review) => review.reviewId !== reviewId
+          );
+        });
+        // Don't set userReview to null since admin might not be the author
+      } catch (err: any) {
+        const errorMessage =
+          err.response?.data?.error || 'Failed to delete review (admin)';
+        setError(errorMessage);
+        throw new Error(errorMessage);
+      }
+    },
+    []
+  );
+
   const handleVote = useCallback(
     async (
       reviewId: string,
@@ -211,6 +233,7 @@ export const useReviews = () => {
     addReview,
     editReview,
     removeReview,
+    adminRemoveReview,
     handleVote,
     clearError,
     resetState,

@@ -9,8 +9,10 @@ interface ReviewListProps {
   onVote: (reviewId: string, voteType: 'upvote' | 'downvote') => void;
   onEdit?: (review: Review) => void;
   onDelete?: (reviewId: string) => void;
+  onAdminDelete?: (reviewId: string) => void;
   isVotingDisabled: boolean;
   currentUserId?: string;
+  isAdmin?: boolean;
   userVotes?: Record<string, 'upvote' | 'downvote' | null>;
   votingLoading?: Record<string, boolean>;
 }
@@ -22,8 +24,10 @@ export const ReviewList = ({
   onVote,
   onEdit,
   onDelete,
+  onAdminDelete,
   isVotingDisabled,
   currentUserId,
+  isAdmin = false,
   userVotes = {},
   votingLoading = {},
 }: ReviewListProps) => {
@@ -63,8 +67,10 @@ export const ReviewList = ({
           onVote={onVote}
           onEdit={onEdit}
           onDelete={onDelete}
+          onAdminDelete={onAdminDelete}
           isVotingDisabled={isVotingDisabled}
           canEdit={Boolean(currentUserId && review.authorId === currentUserId)}
+          canAdminDelete={Boolean(isAdmin && currentUserId !== review.authorId)}
           userVote={userVotes[review.reviewId] || null}
           isVotingLoading={votingLoading[review.reviewId] || false}
         />

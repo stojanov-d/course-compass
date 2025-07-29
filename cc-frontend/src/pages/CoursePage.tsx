@@ -46,6 +46,7 @@ const CourseDetailPage = () => {
     addReview,
     editReview,
     removeReview,
+    adminRemoveReview,
     handleVote,
     clearError,
     resetState,
@@ -133,6 +134,17 @@ const CourseDetailPage = () => {
     try {
       await removeReview(courseCode, reviewId);
       setSuccessMessage('Review deleted successfully!');
+    } catch {
+      // Error is handled in the useReviews hook
+    }
+  };
+
+  const handleAdminDeleteReview = async (reviewId: string) => {
+    if (!courseCode) return;
+
+    try {
+      await adminRemoveReview(courseCode, reviewId);
+      setSuccessMessage('Review deleted successfully by admin!');
     } catch {
       // Error is handled in the useReviews hook
     }
@@ -316,8 +328,10 @@ const CourseDetailPage = () => {
           }}
           onEdit={handleStartEdit}
           onDelete={handleDeleteReview}
+          onAdminDelete={handleAdminDeleteReview}
           isVotingDisabled={!user}
           currentUserId={user?.id}
+          isAdmin={user?.isAdmin}
           userVotes={userVotes}
           votingLoading={votingLoading}
         />

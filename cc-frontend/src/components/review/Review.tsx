@@ -23,8 +23,10 @@ interface ReviewCardProps {
   onVote: (reviewId: string, voteType: 'upvote' | 'downvote') => void;
   onEdit?: (review: Review) => void;
   onDelete?: (reviewId: string) => void;
+  onAdminDelete?: (reviewId: string) => void;
   isVotingDisabled: boolean;
   canEdit?: boolean;
+  canAdminDelete?: boolean;
   userVote?: 'upvote' | 'downvote' | null;
   isVotingLoading?: boolean;
 }
@@ -34,13 +36,16 @@ export const ReviewCard = ({
   onVote,
   onEdit,
   onDelete,
+  onAdminDelete,
   isVotingDisabled,
   canEdit = false,
+  canAdminDelete = false,
   userVote = null,
   isVotingLoading = false,
 }: ReviewCardProps) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [adminDeleteModalOpen, setAdminDeleteModalOpen] = useState(false);
   const open = Boolean(anchorEl);
 
   const userDisplay = review.isAnonymous
@@ -70,12 +75,25 @@ export const ReviewCard = ({
     setDeleteModalOpen(true);
   };
 
+  const handleAdminDeleteClick = () => {
+    handleMenuClose();
+    setAdminDeleteModalOpen(true);
+  };
+
   const handleDeleteConfirm = () => {
     onDelete?.(review.reviewId);
   };
 
+  const handleAdminDeleteConfirm = () => {
+    onAdminDelete?.(review.reviewId);
+  };
+
   const handleDeleteCancel = () => {
     setDeleteModalOpen(false);
+  };
+
+  const handleAdminDeleteCancel = () => {
+    setAdminDeleteModalOpen(false);
   };
 
   return (
@@ -110,7 +128,8 @@ export const ReviewCard = ({
               </Box>
             </Box>
 
-            {canEdit && (onEdit || onDelete) && (
+            {((canEdit && (onEdit || onDelete)) ||
+              (canAdminDelete && onAdminDelete)) && (
               <Box>
                 <IconButton
                   onClick={handleMenuOpen}
@@ -132,7 +151,7 @@ export const ReviewCard = ({
                     horizontal: 'right',
                   }}
                 >
-                  {onEdit && (
+                  {canEdit && onEdit && (
                     <MenuItem onClick={handleEdit}>
                       <ListItemIcon>
                         <Edit fontSize="small" />
@@ -140,7 +159,7 @@ export const ReviewCard = ({
                       <ListItemText>Edit Review</ListItemText>
                     </MenuItem>
                   )}
-                  {onDelete && (
+                  {canEdit && onDelete && (
                     <MenuItem
                       onClick={handleDeleteClick}
                       sx={{ color: 'error.main' }}
@@ -149,6 +168,17 @@ export const ReviewCard = ({
                         <Delete fontSize="small" color="error" />
                       </ListItemIcon>
                       <ListItemText>Delete Review</ListItemText>
+                    </MenuItem>
+                  )}
+                  {canAdminDelete && onAdminDelete && (
+                    <MenuItem
+                      onClick={handleAdminDeleteClick}
+                      sx={{ color: 'error.main' }}
+                    >
+                      <ListItemIcon>
+                        <Delete fontSize="small" color="error" />
+                      </ListItemIcon>
+                      <ListItemText>Delete Review (Admin)</ListItemText>
                     </MenuItem>
                   )}
                 </Menu>
@@ -241,6 +271,19 @@ export const ReviewCard = ({
         title="Delete Review"
         message="Are you sure you want to delete this review? This action cannot be undone and will permanently remove your review and all associated data."
         confirmText="Delete"
+        cancelText="Cancel"
+        confirmColor="error"
+        showIcon={true}
+      />
+
+      {/* Admin Delete Confirmation Modal */}
+      <ConfirmationModal
+        open={adminDeleteModalOpen}
+        onClose={handleAdminDeleteCancel}
+        onConfirm={handleAdminDeleteConfirm}
+        title="Delete Review (Admin)"
+        message="Are you sure you want to delete this review as an admin? This action cannot be undone and will permanently remove the review and all associated data."
+        confirmText="Delete as Admin"
         cancelText="Cancel"
         confirmColor="error"
         showIcon={true}

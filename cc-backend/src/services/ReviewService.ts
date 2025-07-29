@@ -303,6 +303,28 @@ export class ReviewService {
     }
   }
 
+  async adminDeleteReview(reviewId: string, courseId: string): Promise<void> {
+    try {
+      const review = await this.getReviewById(reviewId, courseId);
+      if (!review) {
+        throw new Error('Review not found');
+      }
+
+      const partitionKey = `REVIEW_${courseId}`;
+      await this.reviewsTable.deleteEntity(partitionKey, reviewId);
+
+      const userPartitionKey = `USER_REVIEWS_${review.userId}`;
+      await this.reviewsTable.deleteEntity(userPartitionKey, reviewId);
+
+      await this.deleteCommentsForReview(reviewId);
+
+      await this.updateCourseStatistics(courseId);
+    } catch (error: any) {
+      console.error('Error deleting review (admin):', error);
+      throw new Error(`Failed to delete review: ${error.message}`);
+    }
+  }
+
   async createComment(data: CommentCreateData): Promise<CommentEntity> {
     try {
       const comment = new CommentEntity({
@@ -416,6 +438,25 @@ export class ReviewService {
       await this.commentsTable.deleteEntity(partitionKey, commentId);
     } catch (error: any) {
       console.error('Error deleting comment:', error);
+      throw new Error(`Failed to delete comment: ${error.message}`);
+    }
+  }
+
+  async adminDeleteComment(commentId: string, reviewId: string): Promise<void> {
+    try {
+      const partitionKey = `COMMENT_${reviewId}`;
+      const entity = await this.commentsTable.getEntity(
+        partitionKey,
+        commentId
+      );
+
+      if (!entity) {
+        throw new Error('Comment not found');
+      }
+
+      await this.commentsTable.deleteEntity(partitionKey, commentId);
+    } catch (error: any) {
+      console.error('Error deleting comment (admin):', error);
       throw new Error(`Failed to delete comment: ${error.message}`);
     }
   }

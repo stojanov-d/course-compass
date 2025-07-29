@@ -5,6 +5,7 @@ import {
   UpdateCommentData,
 } from '../types/comment';
 import * as commentApi from '../api/commentApi';
+import { adminApi } from '../api/adminApi';
 import { useAuth } from './useAuth';
 
 export const useComments = (reviewId: string) => {
@@ -155,6 +156,26 @@ export const useComments = (reviewId: string) => {
     [reviewId]
   );
 
+  const adminDeleteComment = useCallback(
+    async (commentId: string) => {
+      setError(null);
+      try {
+        await adminApi.deleteComment(reviewId, commentId);
+        setComments((prev) =>
+          prev.filter((comment) => comment.commentId !== commentId)
+        );
+      } catch (err: unknown) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Failed to delete comment (admin)'
+        );
+        throw err;
+      }
+    },
+    [reviewId]
+  );
+
   const voteOnComment = useCallback(
     async (commentId: string, voteType: 'upvote' | 'downvote') => {
       setVotingLoading((prev) => ({ ...prev, [commentId]: true }));
@@ -213,6 +234,7 @@ export const useComments = (reviewId: string) => {
     createComment,
     updateComment,
     deleteComment,
+    adminDeleteComment,
     voteOnComment,
     canEditComment,
   };

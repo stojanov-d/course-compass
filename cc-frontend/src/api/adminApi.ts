@@ -60,4 +60,13 @@ export const adminApi = {
     );
     return response.data;
   },
+
+  // Admin-only delete functions
+  deleteReview: async (courseId: string, reviewId: string): Promise<void> => {
+    await apiClient.delete(`/admin/reviews/${courseId}/${reviewId}`);
+  },
+
+  deleteComment: async (reviewId: string, commentId: string): Promise<void> => {
+    await apiClient.delete(`/admin/comments/${reviewId}/${commentId}`);
+  },
 };
