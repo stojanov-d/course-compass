@@ -1,30 +1,28 @@
 import axios from 'axios';
 
-const AUTH_STORAGE_KEY = 'courseCompassAuth';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || 'http://localhost:7071/api';
+
+console.log('API Base URL:', API_BASE_URL); // For debugging
 
 const apiClient = axios.create({
-  baseURL: '/api',
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: API_BASE_URL,
+  timeout: 30000,
+  withCredentials: false,
 });
 
+// for debug
 apiClient.interceptors.request.use(
   (config) => {
-    try {
-      const stored = localStorage.getItem(AUTH_STORAGE_KEY);
-      if (stored) {
-        const session = JSON.parse(stored);
-        if (session.token && session.expiresAt > Date.now()) {
-          config.headers.Authorization = `Bearer ${session.token}`;
-        }
-      }
-    } catch (error) {
-      console.error('Failed to get auth token:', error);
+    if (config) {
+      const baseURL = config.baseURL || API_BASE_URL;
+      const url = config.url || '';
+      console.log('Making request to:', `${baseURL}${url}`);
     }
     return config;
   },
   (error) => {
+    console.error('Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
@@ -32,11 +30,7 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
-      // Don't clear the stored session on 401 - just redirect to home
-      // The AuthProvider will handle re-authentication if needed
-      window.location.href = '/';
-    }
+    console.error('API Error:', error.response?.status, error.response?.data);
     return Promise.reject(error);
   }
 );
