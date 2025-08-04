@@ -54,9 +54,19 @@ export class CourseService {
 
   async getCourses(filters: CourseFilters = {}): Promise<CourseEntity[]> {
     try {
+      const connectionString = this.tableService.getConnectionString();
+      console.log(
+        'Storage connection string (masked):',
+        connectionString?.substring(0, 50) + '...'
+      );
+
       const coursesTable = this.tableService.getTableClient(
         TABLE_NAMES.COURSES
       );
+
+      // Test table accessibility
+      console.log('Testing table accessibility...');
+
       const entities = coursesTable.listEntities();
       const courses: CourseEntity[] = [];
 
@@ -72,6 +82,8 @@ export class CourseService {
         }
       }
 
+      console.log(`Successfully retrieved ${courses.length} courses`);
+
       return courses.sort((a, b) => {
         if (a.semester !== b.semester) {
           return a.semester - b.semester;
@@ -79,8 +91,13 @@ export class CourseService {
         return a.courseCode.localeCompare(b.courseCode);
       });
     } catch (error: any) {
-      console.error('Error getting courses:', error);
-      throw new Error('Failed to retrieve courses');
+      console.error('Detailed error in getCourses:', {
+        message: error.message,
+        code: error.code,
+        statusCode: error.statusCode,
+        stack: error.stack,
+      });
+      throw new Error(`Failed to retrieve courses: ${error.message}`);
     }
   }
 

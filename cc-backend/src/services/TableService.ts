@@ -7,11 +7,17 @@ export class TableService {
 
   constructor() {
     this.connectionString =
+      process.env.AzureWebJobsStorage ||
       process.env.AZURE_STORAGE_CONNECTION_STRING ||
       'UseDevelopmentStorage=true';
+
     this.tableServiceClient = TableServiceClient.fromConnectionString(
       this.connectionString
     );
+  }
+
+  getConnectionString(): string {
+    return this.connectionString;
   }
 
   async initializeTables(): Promise<void> {
