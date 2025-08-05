@@ -43,6 +43,7 @@ export const CommentCard = ({
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [adminDeleteModalOpen, setAdminDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const open = Boolean(anchorEl);
 
   const userDisplay = comment.isAnonymous
@@ -77,14 +78,24 @@ export const CommentCard = ({
     setAdminDeleteModalOpen(true);
   };
 
-  const handleDeleteConfirm = () => {
-    onDelete?.(comment.commentId);
-    setDeleteModalOpen(false);
+  const handleDeleteConfirm = async () => {
+    setIsDeleting(true);
+    try {
+      await onDelete?.(comment.commentId);
+    } finally {
+      setIsDeleting(false);
+      setDeleteModalOpen(false);
+    }
   };
 
-  const handleAdminDeleteConfirm = () => {
-    onAdminDelete?.(comment.commentId);
-    setAdminDeleteModalOpen(false);
+  const handleAdminDeleteConfirm = async () => {
+    setIsDeleting(true);
+    try {
+      await onAdminDelete?.(comment.commentId);
+    } finally {
+      setIsDeleting(false);
+      setAdminDeleteModalOpen(false);
+    }
   };
 
   const handleDeleteCancel = () => {
@@ -105,6 +116,8 @@ export const CommentCard = ({
           borderColor: 'divider',
           borderRadius: 2,
           backgroundColor: 'grey.50',
+          opacity: isDeleting ? 0.5 : 1,
+          pointerEvents: isDeleting ? 'none' : 'auto',
         }}
       >
         <Stack spacing={1}>
