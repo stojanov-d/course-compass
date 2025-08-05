@@ -55,24 +55,27 @@ export const useComments = (reviewId: string) => {
   }, [reviewId, user]);
 
   const fetchUserVoteStatuses = useCallback(async (commentIds: string[]) => {
+    if (commentIds.length === 0) return;
+
     try {
-      const voteStatuses = await Promise.all(
+      const voteStatuses = await Promise.allSettled(
         commentIds.map(async (commentId) => {
-          try {
-            const response = await commentApi.getUserVoteStatus(
-              'comment',
-              commentId
-            );
-            return { commentId, voteType: response.data.voteType };
-          } catch {
-            return { commentId, voteType: null };
-          }
+          const response = await commentApi.getUserVoteStatus(
+            'comment',
+            commentId
+          );
+          return { commentId, voteType: response.data.voteType };
         })
       );
 
       const votesMap = voteStatuses.reduce(
-        (acc, { commentId, voteType }) => {
-          acc[commentId] = voteType;
+        (acc, result, index) => {
+          if (result.status === 'fulfilled') {
+            const { commentId, voteType } = result.value;
+            acc[commentId] = voteType;
+          } else {
+            acc[commentIds[index]] = null;
+          }
           return acc;
         },
         {} as Record<string, 'upvote' | 'downvote' | null>
