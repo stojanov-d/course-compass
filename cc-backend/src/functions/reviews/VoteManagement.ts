@@ -7,6 +7,30 @@ import {
 import { ReviewService, VoteData } from '../../services/ReviewService';
 import { requireAuth } from '../../middleware/authMiddleware';
 
+interface VoteRequest {
+  voteType: 'upvote' | 'downvote';
+}
+
+interface VotePathParams {
+  voteTarget: 'review' | 'comment';
+  firstId: string;
+  secondId: string;
+}
+
+const parseVotePath = (pathSegments: string[]): VotePathParams | null => {
+  if (pathSegments.length < 5) return null;
+
+  const voteTarget = pathSegments[2] as 'review' | 'comment';
+  const firstId = pathSegments[3];
+  const secondId = pathSegments[4];
+
+  if (!['review', 'comment'].includes(voteTarget) || !firstId || !secondId) {
+    return null;
+  }
+
+  return { voteTarget, firstId, secondId };
+};
+
 export async function voteManagement(
   request: HttpRequest,
   context: InvocationContext
@@ -40,14 +64,10 @@ export async function voteManagement(
       .split('/')
       .filter((segment) => segment !== '');
 
-    // Expected paths:
-    // /api/vote/review/{courseId}/{reviewId}
-    // /api/vote/comment/{reviewId}/{commentId}
-    const voteType = pathSegments[2]; // review or comment
-    const firstId = pathSegments[3];
-    const secondId = pathSegments[4];
+    // Parse the vote path using our type-safe function
+    const votePathParams = parseVotePath(pathSegments);
 
-    if (!voteType || !firstId || !secondId) {
+    if (!votePathParams) {
       return {
         status: 400,
         jsonBody: {
@@ -57,7 +77,7 @@ export async function voteManagement(
       };
     }
 
-    const body = (await request.json()) as { voteType: 'upvote' | 'downvote' };
+    const body = (await request.json()) as VoteRequest;
 
     if (!body.voteType || !['upvote', 'downvote'].includes(body.voteType)) {
       return {
@@ -75,12 +95,22 @@ export async function voteManagement(
 
     const reviewService = new ReviewService();
 
-    switch (voteType) {
+    switch (votePathParams.voteTarget) {
       case 'review':
-        return await voteOnReview(firstId, secondId, voteData, reviewService);
+        return await voteOnReview(
+          votePathParams.firstId,
+          votePathParams.secondId,
+          voteData,
+          reviewService
+        );
 
       case 'comment':
-        return await voteOnComment(firstId, secondId, voteData, reviewService);
+        return await voteOnComment(
+          votePathParams.firstId,
+          votePathParams.secondId,
+          voteData,
+          reviewService
+        );
 
       default:
         return {
