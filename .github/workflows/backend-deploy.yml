@@ -5,6 +5,14 @@ on:
     branches: [main]
     paths:
       - "cc-backend/**"
+      - "cc-frontend/**"
+      - ".github/workflows/backend-deploy.yml"
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+    paths:
+      - "cc-backend/**"
+      - "cc-frontend/**"
       - ".github/workflows/backend-deploy.yml"
   workflow_dispatch:
 

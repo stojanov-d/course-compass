@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -43,13 +43,44 @@ export const AddReviewForm = ({
   });
 
   const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({});
+
+  const validateForm = useCallback(() => {
+    const errors: Record<string, string> = {};
+
+    if (!formData.reviewText.trim()) {
+      errors.reviewText = 'Review text is required';
+    } else if (formData.reviewText.length < 10) {
+      errors.reviewText = 'Review must be at least 10 characters long';
+    } else if (formData.reviewText.length > 2000) {
+      errors.reviewText = 'Review must be less than 2000 characters';
+    }
+
+    if (formData.rating < 1 || formData.rating > 5) {
+      errors.rating = 'Rating must be between 1 and 5';
+    }
+
+    if (formData.difficulty < 1 || formData.difficulty > 5) {
+      errors.difficulty = 'Difficulty must be between 1 and 5';
+    }
+
+    if (formData.workload < 1 || formData.workload > 5) {
+      errors.workload = 'Workload must be between 1 and 5';
+    }
+
+    return errors;
+  }, [formData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (!formData.reviewText.trim()) {
-      setError('Please write a review');
+    const errors = validateForm();
+    setValidationErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
       return;
     }
 
@@ -166,6 +197,8 @@ export const AddReviewForm = ({
                 setFormData((prev) => ({ ...prev, reviewText: e.target.value }))
               }
               variant="outlined"
+              error={!!validationErrors.reviewText}
+              helperText={validationErrors.reviewText}
               sx={{
                 '& .MuiOutlinedInput-root': {
                   borderRadius: 2,

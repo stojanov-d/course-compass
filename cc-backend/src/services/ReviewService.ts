@@ -10,6 +10,20 @@ import { TableService } from './TableService';
 import { UserService } from './UserService';
 import { CourseService } from './CourseService';
 import { TABLE_NAMES } from '../config/tableStorage';
+import { inputSanitizationService } from './InputSanitizationService';
+import { rateLimitService } from './RateLimitService';
+import { cacheService } from './CacheService';
+
+class ReviewServiceError extends Error {
+  constructor(
+    message: string,
+    public readonly code: string,
+    public readonly statusCode: number = 500
+  ) {
+    super(message);
+    this.name = 'ReviewServiceError';
+  }
+}
 
 export interface ReviewCreateData {
   userId: string;
@@ -88,9 +102,42 @@ export class ReviewService {
     this.courseService = new CourseService();
   }
 
+  private handleError(operation: string, error: any): never {
+    console.error(`Error in ${operation}:`, error);
+
+    if (error.statusCode === 404) {
+      throw new ReviewServiceError(
+        `Resource not found during ${operation}`,
+        'NOT_FOUND',
+        404
+      );
+    }
+
+    if (error.statusCode === 409) {
+      throw new ReviewServiceError(
+        `Conflict during ${operation}`,
+        'CONFLICT',
+        409
+      );
+    }
+
+    throw new ReviewServiceError(
+      `Failed to ${operation}: ${error.message}`,
+      'INTERNAL_ERROR',
+      500
+    );
+  }
+
   async createReview(data: ReviewCreateData): Promise<ReviewEntity> {
     try {
-      this.validateRatings(data.rating, data.difficulty, data.workload);
+      // Validate and sanitize input
+      inputSanitizationService.validateRating(data.rating);
+      inputSanitizationService.validateRating(data.difficulty);
+      inputSanitizationService.validateRating(data.workload);
+
+      const sanitizedReviewText = inputSanitizationService.sanitizeReview(
+        data.reviewText
+      );
 
       const existingReview = await this.getUserReviewForCourse(
         data.userId,
@@ -102,6 +149,7 @@ export class ReviewService {
 
       const review = new ReviewEntity({
         ...data,
+        reviewText: sanitizedReviewText,
         isApproved: true, // Auto-approve for now, can add moderation later
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -118,8 +166,7 @@ export class ReviewService {
 
       return review;
     } catch (error: any) {
-      console.error('Error creating review:', error);
-      throw new Error(`Failed to create review: ${error.message}`);
+      this.handleError('create review', error);
     }
   }
 
@@ -128,18 +175,27 @@ export class ReviewService {
     courseId: string
   ): Promise<ReviewEntity | null> {
     try {
+      const cacheKey = `review:${courseId}:${reviewId}`;
+      const cachedReview = await cacheService.get<ReviewEntity>(cacheKey);
+      if (cachedReview) {
+        return cachedReview;
+      }
+
       const partitionKey = `REVIEW_${courseId}`;
       const entity = await this.reviewsTable.getEntity(partitionKey, reviewId);
 
       if (!entity) return null;
 
-      return this.mapEntityToReview(entity);
+      const review = this.mapEntityToReview(entity);
+
+      await cacheService.set(cacheKey, review, 300000);
+
+      return review;
     } catch (error: any) {
       if (error.statusCode === 404) {
         return null;
       }
-      console.error('Error getting review:', error);
-      throw new Error(`Failed to get review: ${error.message}`);
+      this.handleError('get review by id', error);
     }
   }
 
@@ -207,6 +263,12 @@ export class ReviewService {
     courseId: string
   ): Promise<ReviewEntity | null> {
     try {
+      const cacheKey = `user-review:${userId}:${courseId}`;
+      const cachedReview = await cacheService.get<ReviewEntity>(cacheKey);
+      if (cachedReview) {
+        return cachedReview;
+      }
+
       const partitionKey = `USER_REVIEWS_${userId}`;
       const entities = this.reviewsTable.listEntities();
 
@@ -214,15 +276,23 @@ export class ReviewService {
         if (entity.partitionKey === partitionKey) {
           const userReview = entity as unknown as UserReviewEntity;
           if (userReview.courseId === courseId) {
-            return await this.getReviewById(entity.rowKey as string, courseId);
+            const review = await this.getReviewById(
+              entity.rowKey as string,
+              courseId
+            );
+
+            if (review) {
+              await cacheService.set(cacheKey, review, 300000);
+            }
+
+            return review;
           }
         }
       }
 
       return null;
     } catch (error: any) {
-      console.error('Error getting user review:', error);
-      throw new Error(`Failed to get user review: ${error.message}`);
+      this.handleError('get user review for course', error);
     }
   }
 
@@ -247,11 +317,15 @@ export class ReviewService {
         updateData.difficulty !== undefined ||
         updateData.workload !== undefined
       ) {
-        this.validateRatings(
-          updateData.rating ?? review.rating,
-          updateData.difficulty ?? review.difficulty,
-          updateData.workload ?? review.workload
-        );
+        if (updateData.rating !== undefined) {
+          inputSanitizationService.validateRating(updateData.rating);
+        }
+        if (updateData.difficulty !== undefined) {
+          inputSanitizationService.validateRating(updateData.difficulty);
+        }
+        if (updateData.workload !== undefined) {
+          inputSanitizationService.validateRating(updateData.workload);
+        }
       }
 
       const updatedReview = {
@@ -266,10 +340,14 @@ export class ReviewService {
         await this.updateCourseStatistics(courseId);
       }
 
+      const cacheKey = `review:${courseId}:${reviewId}`;
+      const userCacheKey = `user-review:${userId}:${courseId}`;
+      await cacheService.delete(cacheKey);
+      await cacheService.delete(userCacheKey);
+
       return this.mapEntityToReview(updatedReview);
     } catch (error: any) {
-      console.error('Error updating review:', error);
-      throw new Error(`Failed to update review: ${error.message}`);
+      this.handleError('update review', error);
     }
   }
 
@@ -297,9 +375,13 @@ export class ReviewService {
       await this.deleteCommentsForReview(reviewId);
 
       await this.updateCourseStatistics(courseId);
+
+      const cacheKey = `review:${courseId}:${reviewId}`;
+      const userCacheKey = `user-review:${userId}:${courseId}`;
+      await cacheService.delete(cacheKey);
+      await cacheService.delete(userCacheKey);
     } catch (error: any) {
-      console.error('Error deleting review:', error);
-      throw new Error(`Failed to delete review: ${error.message}`);
+      this.handleError('delete review', error);
     }
   }
 
@@ -319,16 +401,29 @@ export class ReviewService {
       await this.deleteCommentsForReview(reviewId);
 
       await this.updateCourseStatistics(courseId);
+
+      const cacheKey = `review:${courseId}:${reviewId}`;
+      const userCacheKey = `user-review:${review.userId}:${courseId}`;
+      await cacheService.delete(cacheKey);
+      await cacheService.delete(userCacheKey);
     } catch (error: any) {
-      console.error('Error deleting review (admin):', error);
-      throw new Error(`Failed to delete review: ${error.message}`);
+      this.handleError('admin delete review', error);
     }
   }
 
   async createComment(data: CommentCreateData): Promise<CommentEntity> {
     try {
+      if (!rateLimitService.checkRateLimit(data.userId, 'comment')) {
+        throw new Error('Rate limit exceeded for comments');
+      }
+
+      const sanitizedCommentText = inputSanitizationService.sanitizeComment(
+        data.commentText
+      );
+
       const comment = new CommentEntity({
         ...data,
+        commentText: sanitizedCommentText,
         isApproved: true, // Auto-approve for now
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -339,8 +434,7 @@ export class ReviewService {
       await this.commentsTable.createEntity(comment);
       return comment;
     } catch (error: any) {
-      console.error('Error creating comment:', error);
-      throw new Error(`Failed to create comment: ${error.message}`);
+      this.handleError('create comment', error);
     }
   }
 
@@ -467,6 +561,10 @@ export class ReviewService {
     voteData: VoteData
   ): Promise<{ review: ReviewEntity; voteResult: VoteResult }> {
     try {
+      if (!rateLimitService.checkRateLimit(voteData.userId, 'vote')) {
+        throw new Error('Rate limit exceeded for voting');
+      }
+
       const review = await this.getReviewById(reviewId, courseId);
       if (!review) {
         throw new Error('Review not found');
@@ -481,7 +579,6 @@ export class ReviewService {
 
       const voteResult = await this.processVote(voteTrackingData);
 
-      // Update review vote counts
       const updatedReview = await this.updateReviewVoteCounts(
         reviewId,
         courseId
@@ -503,6 +600,11 @@ export class ReviewService {
     voteData: VoteData
   ): Promise<{ comment: CommentEntity; voteResult: VoteResult }> {
     try {
+      // Check rate limit
+      if (!rateLimitService.checkRateLimit(voteData.userId, 'vote')) {
+        throw new Error('Rate limit exceeded for voting');
+      }
+
       const partitionKey = `COMMENT_${reviewId}`;
       const entity = await this.commentsTable.getEntity(
         partitionKey,
@@ -539,12 +641,9 @@ export class ReviewService {
 
   private async updateCourseStatistics(courseId: string): Promise<void> {
     try {
-      // First, we need to get the course to ensure we have the correct internal course ID
-      // The courseId parameter might be a course code, so we need to handle both cases
       let course = await this.courseService.getCourseById(courseId);
 
       if (!course) {
-        // Try to get by course code in case courseId is actually a course code
         course = await this.courseService.getCourseByCode(courseId);
         if (!course) {
           console.error(`Course not found with ID or code: ${courseId}`);
@@ -797,34 +896,28 @@ export class ReviewService {
     }
   }
 
-  private validateRatings(
-    rating: number,
-    difficulty: number,
-    workload: number
-  ): void {
-    if (rating < 1 || rating > 5) {
-      throw new Error('Rating must be between 1 and 5');
-    }
-    if (difficulty < 1 || difficulty > 5) {
-      throw new Error('Difficulty must be between 1 and 5');
-    }
-    if (workload < 1 || workload > 5) {
-      throw new Error('Workload must be between 1 and 5');
-    }
-  }
-
   private async deleteCommentsForReview(reviewId: string): Promise<void> {
     try {
       const partitionKey = `COMMENT_${reviewId}`;
-      const entities = this.commentsTable.listEntities();
+      // Use batch operations instead of individual deletes
+      const entities = this.commentsTable.listEntities({
+        queryOptions: { filter: `PartitionKey eq '${partitionKey}'` },
+      });
 
+      const deleteOperations: any[] = [];
       for await (const entity of entities) {
-        if (entity.partitionKey === partitionKey) {
-          await this.commentsTable.deleteEntity(
-            partitionKey,
-            entity.rowKey as string
-          );
+        deleteOperations.push(['delete', entity]);
+
+        // Process in batches of 100 (Azure Table Storage limit)
+        if (deleteOperations.length === 100) {
+          await this.commentsTable.submitTransaction(deleteOperations);
+          deleteOperations.length = 0;
         }
+      }
+
+      // Process remaining operations
+      if (deleteOperations.length > 0) {
+        await this.commentsTable.submitTransaction(deleteOperations);
       }
     } catch (error: any) {
       console.error('Error deleting comments for review:', error);
