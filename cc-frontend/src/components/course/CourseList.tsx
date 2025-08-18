@@ -18,6 +18,8 @@ interface CourseListProps {
   total: number;
   onCourseClick: (courseCode: string) => void;
   activeStudyProgram?: string;
+  initialPage?: number;
+  onPageChange?: (page: number) => void;
 }
 
 const COURSES_PER_PAGE = 12;
@@ -29,21 +31,29 @@ export const CourseList = ({
   total,
   onCourseClick,
   activeStudyProgram,
+  initialPage,
+  onPageChange,
 }: CourseListProps) => {
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(initialPage || 1);
   const courseListRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [courses]);
+  const totalPages = Math.max(1, Math.ceil(courses.length / COURSES_PER_PAGE));
 
-  const totalPages = Math.ceil(courses.length / COURSES_PER_PAGE);
+  useEffect(() => {
+    if (initialPage !== undefined) {
+      setCurrentPage(Math.min(initialPage, totalPages));
+    } else {
+      setCurrentPage((prev) => Math.min(prev, totalPages));
+    }
+  }, [courses, totalPages, initialPage]);
+
   const startIndex = (currentPage - 1) * COURSES_PER_PAGE;
   const endIndex = startIndex + COURSES_PER_PAGE;
   const currentCourses = courses.slice(startIndex, endIndex);
 
   const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {
     setCurrentPage(page);
+    onPageChange?.(page);
 
     if (courseListRef.current) {
       const headerOffset = 100;

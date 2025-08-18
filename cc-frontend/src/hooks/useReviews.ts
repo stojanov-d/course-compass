@@ -19,7 +19,11 @@ export const useReviews = () => {
   const [userReview, setUserReview] = useState<Review | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [, setContinuationToken] = useState<string | undefined>();
+  const [continuationToken, setContinuationToken] = useState<
+    string | undefined
+  >();
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [userVotes, setUserVotes] = useState<
     Record<string, 'upvote' | 'downvote' | null>
   >({});
@@ -31,17 +35,45 @@ export const useReviews = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await getReviewsForCourse(courseId);
-      setReviews(response.reviews || []);
+      const response = await getReviewsForCourse(courseId, undefined, 20);
+      const list = Array.isArray(response.reviews) ? response.reviews : [];
+      setReviews(list);
       setContinuationToken(response.continuationToken);
+      setHasMore(Boolean(response.continuationToken));
     } catch (err: any) {
       console.error('Failed to fetch reviews:', err);
       setError(err.response?.data?.error || 'Failed to fetch reviews');
       setReviews([]); // Reset to empty array on error
+      setContinuationToken(undefined);
+      setHasMore(false);
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const loadMoreReviews = useCallback(
+    async (courseId: string) => {
+      if (!continuationToken) return;
+      setLoadingMore(true);
+      try {
+        const response = await getReviewsForCourse(
+          courseId,
+          continuationToken,
+          20
+        );
+        const list = Array.isArray(response.reviews) ? response.reviews : [];
+        setReviews((prev) => [...(Array.isArray(prev) ? prev : []), ...list]);
+        setContinuationToken(response.continuationToken);
+        setHasMore(Boolean(response.continuationToken));
+      } catch (err: any) {
+        console.error('Failed to load more reviews:', err);
+        setError(err.response?.data?.error || 'Failed to load more reviews');
+      } finally {
+        setLoadingMore(false);
+      }
+    },
+    [continuationToken]
+  );
 
   const fetchUserVoteStatuses = useCallback(async (reviewIds: string[]) => {
     try {
@@ -157,7 +189,6 @@ export const useReviews = () => {
             (review) => review.reviewId !== reviewId
           );
         });
-        // Don't set userReview to null since admin might not be the author
       } catch (err: any) {
         const errorMessage =
           err.response?.data?.error || 'Failed to delete review (admin)';
@@ -178,7 +209,6 @@ export const useReviews = () => {
       try {
         const { data } = await voteOnReview(courseId, reviewId, voteType);
 
-        // Update reviews with new vote counts
         setReviews((currentReviews) => {
           const reviews = Array.isArray(currentReviews) ? currentReviews : [];
           return reviews.map((review) =>
@@ -192,7 +222,6 @@ export const useReviews = () => {
           );
         });
 
-        // Update user vote status
         setUserVotes((prev) => ({
           ...prev,
           [reviewId]: data.voteResult?.currentVote || null,
@@ -218,6 +247,9 @@ export const useReviews = () => {
     setLoading(false);
     setUserVotes({});
     setVotingLoading({});
+    setContinuationToken(undefined);
+    setHasMore(false);
+    setLoadingMore(false);
   }, []);
 
   return {
@@ -229,6 +261,7 @@ export const useReviews = () => {
     votingLoading,
     fetchReviews,
     fetchUserReview,
+    loadMoreReviews,
     fetchUserVoteStatuses,
     addReview,
     editReview,
@@ -237,5 +270,7 @@ export const useReviews = () => {
     handleVote,
     clearError,
     resetState,
+    hasMore,
+    loadingMore,
   };
 };

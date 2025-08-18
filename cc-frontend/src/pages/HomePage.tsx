@@ -1,5 +1,5 @@
-import { useCallback } from 'react';
-import { useNavigate } from 'react-router';
+import { useCallback, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router';
 import { Box, Container, Typography, Stack, Button, Fade } from '@mui/material';
 import { School as SchoolIcon } from '@mui/icons-material';
 import { CourseFilters } from '../components/course/CourseFilters';
@@ -12,6 +12,7 @@ import { UserProfileMenu } from '../components/common/UserProfileMenu';
 
 const HomePage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isLoading, login, logout } = useAuth();
   const {
     courses,
@@ -39,11 +40,32 @@ const HomePage = () => {
     [searchCourses]
   );
 
+  type LocationState = { courseListPage?: number } | null;
+
+  const getSavedPage = useCallback((): number => {
+    const s = (location.state as LocationState)?.courseListPage;
+    return typeof s === 'number' && s > 0 ? s : 1;
+  }, [location.state]);
+
   const handleCourseClick = useCallback(
     (courseCode: string) => {
-      navigate(`/course/${courseCode}`);
+      navigate(`/course/${courseCode}`, {
+        state: { courseListPage: getSavedPage() },
+      });
     },
-    [navigate]
+    [navigate, getSavedPage]
+  );
+
+  const initialPage = useMemo(() => getSavedPage(), [getSavedPage]);
+
+  const handlePageChange = useCallback(
+    (page: number) => {
+      navigate(location.pathname + location.search, {
+        replace: true,
+        state: { ...location.state, courseListPage: page },
+      });
+    },
+    [navigate, location.pathname, location.search, location.state]
   );
 
   const handleDiscordLogin = useCallback(async () => {
@@ -182,6 +204,8 @@ const HomePage = () => {
                 total={total}
                 onCourseClick={handleCourseClick}
                 activeStudyProgram={filters.studyProgram}
+                initialPage={initialPage}
+                onPageChange={handlePageChange}
               />
             </Box>
           </Fade>

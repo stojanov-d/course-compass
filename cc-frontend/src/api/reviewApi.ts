@@ -46,21 +46,21 @@ export interface UpdateReviewData {
 
 export const getReviewsForCourse = async (
   courseId: string,
-  continuationToken?: string
+  continuationToken?: string,
+  limit?: number
 ): Promise<ReviewsResponse> => {
   const params = new URLSearchParams();
-  if (continuationToken) {
-    params.append('continuationToken', continuationToken);
-  }
+  if (continuationToken) params.append('continuationToken', continuationToken);
+  if (limit && Number.isFinite(limit)) params.append('limit', String(limit));
 
-  const response = await apiClient.get(
-    `/reviews/${courseId}?${params.toString()}`
-  );
+  const qs = params.toString();
+  const url = qs ? `/reviews/${courseId}?${qs}` : `/reviews/${courseId}`;
+  const response = await apiClient.get(url);
 
   return {
-    reviews: response.data.data || [],
-    total: response.data.data?.length || 0,
-    continuationToken: response.data.continuationToken,
+    reviews: response.data?.data || [],
+    total: (response.data?.data && response.data.data.length) || 0,
+    continuationToken: response.data?.continuationToken,
   };
 };
 
