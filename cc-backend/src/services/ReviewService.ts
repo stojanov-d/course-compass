@@ -1,5 +1,4 @@
-import { TableClient } from '@azure/data-tables';
-import { ReviewEntity, UserReviewEntity } from '../entities/ReviewEntity';
+import { ReviewEntity } from '../entities/ReviewEntity';
 import { CommentEntity } from '../entities/CommentEntity';
 import {
   VoteEntity,
@@ -9,10 +8,13 @@ import {
 import { TableService } from './TableService';
 import { UserService } from './UserService';
 import { CourseService } from './CourseService';
-import { TABLE_NAMES } from '../config/tableStorage';
 import { inputSanitizationService } from './InputSanitizationService';
-import { rateLimitService } from './RateLimitService';
-import { cacheService } from './CacheService';
+import ReviewTableRepository from '../repositories/azure/ReviewTableRepository';
+import CommentTableRepository from '../repositories/azure/CommentTableRepository';
+import VoteTableRepository from '../repositories/azure/VoteTableRepository';
+import type IReviewRepository from '../repositories/interfaces/IReviewRepository';
+import type ICommentRepository from '../repositories/interfaces/ICommentRepository';
+import type IVoteRepository from '../repositories/interfaces/IVoteRepository';
 
 class ReviewServiceError extends Error {
   constructor(
@@ -87,19 +89,25 @@ export interface CommentListOptions {
 
 export class ReviewService {
   private tableService: TableService;
-  private reviewsTable: TableClient;
-  private commentsTable: TableClient;
-  private votesTable: TableClient;
   private userService: UserService;
   private courseService: CourseService;
+  private reviewRepo: IReviewRepository;
+  private commentRepo: ICommentRepository;
+  private voteRepo: IVoteRepository;
 
-  constructor() {
+  constructor(
+    reviewRepo?: IReviewRepository,
+    commentRepo?: ICommentRepository,
+    voteRepo?: IVoteRepository
+  ) {
     this.tableService = new TableService();
-    this.reviewsTable = this.tableService.getTableClient(TABLE_NAMES.REVIEWS);
-    this.commentsTable = this.tableService.getTableClient(TABLE_NAMES.COMMENTS);
-    this.votesTable = this.tableService.getTableClient(TABLE_NAMES.VOTES);
     this.userService = new UserService();
     this.courseService = new CourseService();
+    this.reviewRepo =
+      reviewRepo || new ReviewTableRepository(this.tableService);
+    this.commentRepo =
+      commentRepo || new CommentTableRepository(this.tableService);
+    this.voteRepo = voteRepo || new VoteTableRepository(this.tableService);
   }
 
   private handleError(operation: string, error: any): never {
@@ -130,7 +138,6 @@ export class ReviewService {
 
   async createReview(data: ReviewCreateData): Promise<ReviewEntity> {
     try {
-      // Validate and sanitize input
       inputSanitizationService.validateRating(data.rating);
       inputSanitizationService.validateRating(data.difficulty);
       inputSanitizationService.validateRating(data.workload);
@@ -157,10 +164,8 @@ export class ReviewService {
         downvotes: 0,
       });
 
-      await this.reviewsTable.createEntity(review);
-
       const userReviewEntity = review.toUserReviewEntity();
-      await this.reviewsTable.createEntity(userReviewEntity);
+      await this.reviewRepo.create(review, userReviewEntity);
 
       await this.updateCourseStatistics(data.courseId);
 
@@ -175,21 +180,8 @@ export class ReviewService {
     courseId: string
   ): Promise<ReviewEntity | null> {
     try {
-      const cacheKey = `review:${courseId}:${reviewId}`;
-      const cachedReview = await cacheService.get<ReviewEntity>(cacheKey);
-      if (cachedReview) {
-        return cachedReview;
-      }
-
-      const partitionKey = `REVIEW_${courseId}`;
-      const entity = await this.reviewsTable.getEntity(partitionKey, reviewId);
-
-      if (!entity) return null;
-
-      const review = this.mapEntityToReview(entity);
-
-      await cacheService.set(cacheKey, review, 300000);
-
+      const review = await this.reviewRepo.getById(reviewId, courseId);
+      if (!review) return null;
       return review;
     } catch (error: any) {
       if (error.statusCode === 404) {
@@ -207,33 +199,13 @@ export class ReviewService {
     continuationToken?: string;
   }> {
     try {
-      const { limit = 20 } = options;
-      const partitionKey = `REVIEW_${courseId}`;
-
-      const entities = this.reviewsTable.listEntities();
-      const reviews: ReviewEntity[] = [];
-
-      for await (const entity of entities) {
-        if (
-          entity.partitionKey === partitionKey &&
-          !entity.rowKey?.toString().startsWith('USER_REVIEWS_')
-        ) {
-          reviews.push(this.mapEntityToReview(entity));
-
-          if (limit && reviews.length >= limit) {
-            break;
-          }
-        }
-      }
-
-      // Sort by creation date (newest first) and then by upvotes
-      reviews.sort((a, b) => {
-        const dateCompare = b.createdAt.getTime() - a.createdAt.getTime();
-        if (dateCompare !== 0) return dateCompare;
-        return b.upvotes - a.upvotes;
-      });
-
-      return { reviews };
+      const { limit = 20, continuationToken } = options;
+      const result = await this.reviewRepo.listByCourseWithToken(
+        courseId,
+        limit,
+        continuationToken
+      );
+      return result;
     } catch (error: any) {
       console.error('Error getting reviews for course:', error);
       throw new Error(`Failed to get reviews: ${error.message}`);
@@ -263,34 +235,11 @@ export class ReviewService {
     courseId: string
   ): Promise<ReviewEntity | null> {
     try {
-      const cacheKey = `user-review:${userId}:${courseId}`;
-      const cachedReview = await cacheService.get<ReviewEntity>(cacheKey);
-      if (cachedReview) {
-        return cachedReview;
-      }
-
-      const partitionKey = `USER_REVIEWS_${userId}`;
-      const entities = this.reviewsTable.listEntities();
-
-      for await (const entity of entities) {
-        if (entity.partitionKey === partitionKey) {
-          const userReview = entity as unknown as UserReviewEntity;
-          if (userReview.courseId === courseId) {
-            const review = await this.getReviewById(
-              entity.rowKey as string,
-              courseId
-            );
-
-            if (review) {
-              await cacheService.set(cacheKey, review, 300000);
-            }
-
-            return review;
-          }
-        }
-      }
-
-      return null;
+      const review = await this.reviewRepo.getUserReviewForCourse(
+        userId,
+        courseId
+      );
+      return review;
     } catch (error: any) {
       this.handleError('get user review for course', error);
     }
@@ -328,22 +277,17 @@ export class ReviewService {
         }
       }
 
-      const updatedReview = {
+      const updatedReview = new ReviewEntity({
         ...review,
         ...updateData,
         updatedAt: new Date(),
-      };
+      });
 
-      await this.reviewsTable.updateEntity(updatedReview, 'Replace');
+      await this.reviewRepo.update(updatedReview as any);
 
       if (updateData.rating !== undefined) {
         await this.updateCourseStatistics(courseId);
       }
-
-      const cacheKey = `review:${courseId}:${reviewId}`;
-      const userCacheKey = `user-review:${userId}:${courseId}`;
-      await cacheService.delete(cacheKey);
-      await cacheService.delete(userCacheKey);
 
       return this.mapEntityToReview(updatedReview);
     } catch (error: any) {
@@ -366,20 +310,11 @@ export class ReviewService {
         throw new Error('Unauthorized: Can only delete your own reviews');
       }
 
-      const partitionKey = `REVIEW_${courseId}`;
-      await this.reviewsTable.deleteEntity(partitionKey, reviewId);
-
-      const userPartitionKey = `USER_REVIEWS_${userId}`;
-      await this.reviewsTable.deleteEntity(userPartitionKey, reviewId);
+      await this.reviewRepo.delete(reviewId, courseId, userId);
 
       await this.deleteCommentsForReview(reviewId);
 
       await this.updateCourseStatistics(courseId);
-
-      const cacheKey = `review:${courseId}:${reviewId}`;
-      const userCacheKey = `user-review:${userId}:${courseId}`;
-      await cacheService.delete(cacheKey);
-      await cacheService.delete(userCacheKey);
     } catch (error: any) {
       this.handleError('delete review', error);
     }
@@ -392,20 +327,9 @@ export class ReviewService {
         throw new Error('Review not found');
       }
 
-      const partitionKey = `REVIEW_${courseId}`;
-      await this.reviewsTable.deleteEntity(partitionKey, reviewId);
-
-      const userPartitionKey = `USER_REVIEWS_${review.userId}`;
-      await this.reviewsTable.deleteEntity(userPartitionKey, reviewId);
-
+      await this.reviewRepo.adminDelete(reviewId, courseId, review.userId);
       await this.deleteCommentsForReview(reviewId);
-
       await this.updateCourseStatistics(courseId);
-
-      const cacheKey = `review:${courseId}:${reviewId}`;
-      const userCacheKey = `user-review:${review.userId}:${courseId}`;
-      await cacheService.delete(cacheKey);
-      await cacheService.delete(userCacheKey);
     } catch (error: any) {
       this.handleError('admin delete review', error);
     }
@@ -413,10 +337,6 @@ export class ReviewService {
 
   async createComment(data: CommentCreateData): Promise<CommentEntity> {
     try {
-      if (!rateLimitService.checkRateLimit(data.userId, 'comment')) {
-        throw new Error('Rate limit exceeded for comments');
-      }
-
       const sanitizedCommentText = inputSanitizationService.sanitizeComment(
         data.commentText
       );
@@ -431,7 +351,7 @@ export class ReviewService {
         downvotes: 0,
       });
 
-      await this.commentsTable.createEntity(comment);
+      await this.commentRepo.create(comment);
       return comment;
     } catch (error: any) {
       this.handleError('create comment', error);
@@ -447,24 +367,7 @@ export class ReviewService {
   }> {
     try {
       const { limit = 50 } = options;
-      const partitionKey = `COMMENT_${reviewId}`;
-
-      const entities = this.commentsTable.listEntities();
-      const comments: CommentEntity[] = [];
-
-      for await (const entity of entities) {
-        if (entity.partitionKey === partitionKey) {
-          comments.push(this.mapEntityToComment(entity));
-
-          if (limit && comments.length >= limit) {
-            break;
-          }
-        }
-      }
-
-      // Sort by creation date (oldest first for comment threads)
-      comments.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-
+      const comments = await this.commentRepo.listByReview(reviewId, limit);
       return { comments };
     } catch (error: any) {
       console.error('Error getting comments:', error);
@@ -479,17 +382,11 @@ export class ReviewService {
     commentText: string
   ): Promise<CommentEntity> {
     try {
-      const partitionKey = `COMMENT_${reviewId}`;
-      const entity = await this.commentsTable.getEntity(
-        partitionKey,
-        commentId
-      );
-
+      const entity = await this.commentRepo.getById(reviewId, commentId);
       if (!entity) {
         throw new Error('Comment not found');
       }
-
-      const comment = this.mapEntityToComment(entity);
+      const comment = entity;
       if (comment.userId !== userId) {
         throw new Error('Unauthorized: Can only update your own comments');
       }
@@ -500,8 +397,8 @@ export class ReviewService {
         updatedAt: new Date(),
       };
 
-      await this.commentsTable.updateEntity(updatedComment, 'Replace');
-      return this.mapEntityToComment(updatedComment);
+      await this.commentRepo.update(updatedComment as any);
+      return updatedComment as any;
     } catch (error: any) {
       console.error('Error updating comment:', error);
       throw new Error(`Failed to update comment: ${error.message}`);
@@ -514,22 +411,15 @@ export class ReviewService {
     userId: string
   ): Promise<void> {
     try {
-      const partitionKey = `COMMENT_${reviewId}`;
-      const entity = await this.commentsTable.getEntity(
-        partitionKey,
-        commentId
-      );
-
+      const entity = await this.commentRepo.getById(reviewId, commentId);
       if (!entity) {
         throw new Error('Comment not found');
       }
-
-      const comment = this.mapEntityToComment(entity);
+      const comment = entity;
       if (comment.userId !== userId) {
         throw new Error('Unauthorized: Can only delete your own comments');
       }
-
-      await this.commentsTable.deleteEntity(partitionKey, commentId);
+      await this.commentRepo.delete(reviewId, commentId);
     } catch (error: any) {
       console.error('Error deleting comment:', error);
       throw new Error(`Failed to delete comment: ${error.message}`);
@@ -538,17 +428,11 @@ export class ReviewService {
 
   async adminDeleteComment(commentId: string, reviewId: string): Promise<void> {
     try {
-      const partitionKey = `COMMENT_${reviewId}`;
-      const entity = await this.commentsTable.getEntity(
-        partitionKey,
-        commentId
-      );
-
+      const entity = await this.commentRepo.getById(reviewId, commentId);
       if (!entity) {
         throw new Error('Comment not found');
       }
-
-      await this.commentsTable.deleteEntity(partitionKey, commentId);
+      await this.commentRepo.delete(reviewId, commentId);
     } catch (error: any) {
       console.error('Error deleting comment (admin):', error);
       throw new Error(`Failed to delete comment: ${error.message}`);
@@ -561,10 +445,6 @@ export class ReviewService {
     voteData: VoteData
   ): Promise<{ review: ReviewEntity; voteResult: VoteResult }> {
     try {
-      if (!rateLimitService.checkRateLimit(voteData.userId, 'vote')) {
-        throw new Error('Rate limit exceeded for voting');
-      }
-
       const review = await this.getReviewById(reviewId, courseId);
       if (!review) {
         throw new Error('Review not found');
@@ -577,7 +457,12 @@ export class ReviewService {
         targetId: reviewId,
       };
 
-      const voteResult = await this.processVote(voteTrackingData);
+      const voteResult = await this.voteRepo.processVote(
+        voteData.userId,
+        voteTrackingData.targetType,
+        voteTrackingData.targetId,
+        voteData.voteType
+      );
 
       const updatedReview = await this.updateReviewVoteCounts(
         reviewId,
@@ -600,17 +485,7 @@ export class ReviewService {
     voteData: VoteData
   ): Promise<{ comment: CommentEntity; voteResult: VoteResult }> {
     try {
-      // Check rate limit
-      if (!rateLimitService.checkRateLimit(voteData.userId, 'vote')) {
-        throw new Error('Rate limit exceeded for voting');
-      }
-
-      const partitionKey = `COMMENT_${reviewId}`;
-      const entity = await this.commentsTable.getEntity(
-        partitionKey,
-        commentId
-      );
-
+      const entity = await this.commentRepo.getById(reviewId, commentId);
       if (!entity) {
         throw new Error('Comment not found');
       }
@@ -622,7 +497,12 @@ export class ReviewService {
         targetId: commentId,
       };
 
-      const voteResult = await this.processVote(voteTrackingData);
+      const voteResult = await this.voteRepo.processVote(
+        voteData.userId,
+        voteTrackingData.targetType,
+        voteTrackingData.targetId,
+        voteData.voteType
+      );
 
       const updatedComment = await this.updateCommentVoteCounts(
         commentId,
@@ -684,7 +564,6 @@ export class ReviewService {
   }> {
     await this.updateCourseStatistics(courseId);
 
-    // Return the calculated stats
     const reviews = await this.getReviewsForCourse(courseId);
     if (reviews.reviews.length === 0) {
       return { averageRating: 0, totalReviews: 0 };
@@ -697,175 +576,77 @@ export class ReviewService {
     const averageRating = totalRating / reviews.reviews.length;
 
     return {
-      averageRating: Math.round(averageRating * 100) / 100, // Round to 2 decimal places
+      averageRating: Math.round(averageRating * 100) / 100,
       totalReviews: reviews.reviews.length,
     };
   }
 
   private async processVote(voteData: VoteTrackingData): Promise<VoteResult> {
-    const partitionKey = `VOTE_${voteData.targetType.toUpperCase()}_${voteData.targetId}`;
-    const rowKey = voteData.userId;
-
-    try {
-      const existingVote = await this.votesTable.getEntity(
-        partitionKey,
-        rowKey
-      );
-      const existingVoteEntity = this.mapEntityToVote(existingVote);
-
-      if (existingVoteEntity.voteType === voteData.voteType) {
-        await this.votesTable.deleteEntity(partitionKey, rowKey);
-
-        const votes = await this.getVotesByPartitionKey(partitionKey);
-        const upvotes = votes.filter(
-          (vote) => vote.voteType === 'upvote'
-        ).length;
-        const downvotes = votes.filter(
-          (vote) => vote.voteType === 'downvote'
-        ).length;
-
-        return {
-          success: true,
-          action: 'removed',
-          previousVote: existingVoteEntity.voteType,
-          currentVote: null,
-          upvotes,
-          downvotes,
-        };
-      } else {
-        const updatedVote = new VoteEntity({
-          targetType: voteData.targetType,
-          targetId: voteData.targetId,
-          voteType: voteData.voteType,
-          userId: voteData.userId,
-          createdAt: existingVoteEntity.createdAt,
-          updatedAt: new Date(),
-        });
-
-        await this.votesTable.updateEntity(updatedVote, 'Replace');
-
-        const votes = await this.getVotesByPartitionKey(partitionKey);
-        const upvotes = votes.filter(
-          (vote) => vote.voteType === 'upvote'
-        ).length;
-        const downvotes = votes.filter(
-          (vote) => vote.voteType === 'downvote'
-        ).length;
-
-        return {
-          success: true,
-          action: 'updated',
-          previousVote: existingVoteEntity.voteType,
-          currentVote: voteData.voteType,
-          upvotes,
-          downvotes,
-        };
-      }
-    } catch (error: any) {
-      if (error.statusCode === 404) {
-        const newVote = new VoteEntity({
-          targetType: voteData.targetType,
-          targetId: voteData.targetId,
-          voteType: voteData.voteType,
-          userId: voteData.userId,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-
-        await this.votesTable.createEntity(newVote);
-
-        const votes = await this.getVotesByPartitionKey(partitionKey);
-        const upvotes = votes.filter(
-          (vote) => vote.voteType === 'upvote'
-        ).length;
-        const downvotes = votes.filter(
-          (vote) => vote.voteType === 'downvote'
-        ).length;
-
-        return {
-          success: true,
-          action: 'created',
-          previousVote: null,
-          currentVote: voteData.voteType,
-          upvotes,
-          downvotes,
-        };
-      }
-      throw error;
-    }
+    return await this.voteRepo.processVote(
+      voteData.userId,
+      voteData.targetType,
+      voteData.targetId,
+      voteData.voteType
+    );
   }
 
   private async updateReviewVoteCounts(
     reviewId: string,
     courseId: string
   ): Promise<ReviewEntity> {
-    const partitionKey = `VOTE_REVIEW_${reviewId}`;
-
-    const votes = await this.getVotesByPartitionKey(partitionKey);
-    const upvotes = votes.filter((vote) => vote.voteType === 'upvote').length;
-    const downvotes = votes.filter(
-      (vote) => vote.voteType === 'downvote'
-    ).length;
+    const { upvotes, downvotes } = await this.voteRepo.countVotes(
+      'review',
+      reviewId
+    );
 
     const review = await this.getReviewById(reviewId, courseId);
     if (!review) {
       throw new Error('Review not found');
     }
 
-    const updatedReview = {
-      ...review,
+    const updatedReview = new ReviewEntity({
+      reviewId: review.reviewId,
+      userId: review.userId,
+      courseId: review.courseId,
+      professorId: review.professorId,
+      rating: review.rating,
+      difficulty: review.difficulty,
+      workload: review.workload,
+      recommendsCourse: review.recommendsCourse,
+      reviewText: review.reviewText,
+      isAnonymous: review.isAnonymous,
+      isApproved: review.isApproved,
+      createdAt: review.createdAt,
+      updatedAt: new Date(),
       upvotes,
       downvotes,
-      updatedAt: new Date(),
-    };
+    });
 
-    await this.reviewsTable.updateEntity(updatedReview, 'Replace');
-    return this.mapEntityToReview(updatedReview);
+    await this.reviewRepo.update(updatedReview);
+    return updatedReview;
   }
 
   private async updateCommentVoteCounts(
     commentId: string,
     reviewId: string
   ): Promise<CommentEntity> {
-    const partitionKey = `VOTE_COMMENT_${commentId}`;
-
-    const votes = await this.getVotesByPartitionKey(partitionKey);
-    const upvotes = votes.filter((vote) => vote.voteType === 'upvote').length;
-    const downvotes = votes.filter(
-      (vote) => vote.voteType === 'downvote'
-    ).length;
-
-    const commentPartitionKey = `COMMENT_${reviewId}`;
-    const entity = await this.commentsTable.getEntity(
-      commentPartitionKey,
+    const { upvotes, downvotes } = await this.voteRepo.countVotes(
+      'comment',
       commentId
     );
-    const comment = this.mapEntityToComment(entity);
 
+    const entity = await this.commentRepo.getById(reviewId, commentId);
+    if (!entity) {
+      throw new Error('Comment not found');
+    }
     const updatedComment = {
-      ...comment,
+      ...entity,
       upvotes,
       downvotes,
       updatedAt: new Date(),
-    };
-
-    await this.commentsTable.updateEntity(updatedComment, 'Replace');
-    return this.mapEntityToComment(updatedComment);
-  }
-
-  private async getVotesByPartitionKey(
-    partitionKey: string
-  ): Promise<VoteEntity[]> {
-    const votes: VoteEntity[] = [];
-    const entities = this.votesTable.listEntities({
-      queryOptions: { filter: `PartitionKey eq '${partitionKey}'` },
-    });
-
-    for await (const entity of entities) {
-      votes.push(this.mapEntityToVote(entity));
-    }
-
-    return votes;
+    } as CommentEntity;
+    await this.commentRepo.update(updatedComment);
+    return updatedComment;
   }
 
   private mapEntityToVote(entity: any): VoteEntity {
@@ -885,9 +666,12 @@ export class ReviewService {
     targetId: string
   ): Promise<VoteEntity | null> {
     try {
-      const partitionKey = `VOTE_${targetType.toUpperCase()}_${targetId}`;
-      const entity = await this.votesTable.getEntity(partitionKey, userId);
-      return this.mapEntityToVote(entity);
+      const vote = await this.voteRepo.getUserVote(
+        userId,
+        targetType,
+        targetId
+      );
+      return vote;
     } catch (error: any) {
       if (error.statusCode === 404) {
         return null;
@@ -898,27 +682,7 @@ export class ReviewService {
 
   private async deleteCommentsForReview(reviewId: string): Promise<void> {
     try {
-      const partitionKey = `COMMENT_${reviewId}`;
-      // Use batch operations instead of individual deletes
-      const entities = this.commentsTable.listEntities({
-        queryOptions: { filter: `PartitionKey eq '${partitionKey}'` },
-      });
-
-      const deleteOperations: any[] = [];
-      for await (const entity of entities) {
-        deleteOperations.push(['delete', entity]);
-
-        // Process in batches of 100 (Azure Table Storage limit)
-        if (deleteOperations.length === 100) {
-          await this.commentsTable.submitTransaction(deleteOperations);
-          deleteOperations.length = 0;
-        }
-      }
-
-      // Process remaining operations
-      if (deleteOperations.length > 0) {
-        await this.commentsTable.submitTransaction(deleteOperations);
-      }
+      await this.commentRepo.deleteAllForReview(reviewId);
     } catch (error: any) {
       console.error('Error deleting comments for review:', error);
     }
@@ -975,17 +739,7 @@ export class ReviewService {
 
   private async getCommentsCountForReview(reviewId: string): Promise<number> {
     try {
-      const partitionKey = `COMMENT_${reviewId}`;
-      const entities = this.commentsTable.listEntities({
-        queryOptions: { filter: `PartitionKey eq '${partitionKey}'` },
-      });
-
-      let count = 0;
-      for await (const _entity of entities) {
-        count++;
-      }
-
-      return count;
+      return await this.commentRepo.countByReview(reviewId);
     } catch (error: any) {
       console.error('Error counting comments for review:', error);
       return 0;

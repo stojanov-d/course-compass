@@ -23,7 +23,6 @@ class InputSanitizationService {
       return input.trim();
     }
 
-    // Remove all HTML tags and attributes, keeping only plain text
     return this.purify
       .sanitize(input, {
         ALLOWED_TAGS: [],
