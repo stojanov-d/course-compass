@@ -5,6 +5,18 @@
   },
   "routes": [
     {
+      "route": "/assets/*",
+      "headers": {
+        "cache-control": "public, max-age=31536000, immutable"
+      }
+    },
+    {
+      "route": "/index.html",
+      "headers": {
+        "cache-control": "no-cache"
+      }
+    },
+    {
       "route": "/api/*",
       "allowedRoles": ["anonymous"]
     }
