@@ -1,6 +1,7 @@
 import { TableService } from './TableService';
-import { TABLE_NAMES } from '../config/tableStorage';
-import { CourseEntity, CourseLookupEntity } from '../entities/CourseEntity';
+import { CourseEntity } from '../entities/CourseEntity';
+import { CourseTableRepository } from '../repositories/azure/CourseTableRepository';
+import type ICourseRepository from '../repositories/interfaces/ICourseRepository';
 
 export interface CourseFilters {
   semester?: number;
@@ -47,9 +48,11 @@ export interface CourseUpdateRequest {
 
 export class CourseService {
   private tableService: TableService;
+  private repo: ICourseRepository;
 
-  constructor() {
+  constructor(repo?: ICourseRepository) {
     this.tableService = new TableService();
+    this.repo = repo || new CourseTableRepository(this.tableService);
   }
 
   async getCourses(filters: CourseFilters = {}): Promise<CourseEntity[]> {
@@ -60,27 +63,7 @@ export class CourseService {
         connectionString?.substring(0, 50) + '...'
       );
 
-      const coursesTable = this.tableService.getTableClient(
-        TABLE_NAMES.COURSES
-      );
-
-      // Test table accessibility
-      console.log('Testing table accessibility...');
-
-      const entities = coursesTable.listEntities();
-      const courses: CourseEntity[] = [];
-
-      for await (const entity of entities) {
-        if (entity.partitionKey === 'COURSE_CODE') {
-          continue;
-        }
-
-        const course = this.mapTableEntityToCourse(entity);
-
-        if (this.matchesFilters(course, filters)) {
-          courses.push(course);
-        }
-      }
+      const courses = await this.repo.list(filters);
 
       console.log(`Successfully retrieved ${courses.length} courses`);
 
@@ -103,22 +86,7 @@ export class CourseService {
 
   async getCoursesBySemester(semester: number): Promise<CourseEntity[]> {
     try {
-      const coursesTable = this.tableService.getTableClient(
-        TABLE_NAMES.COURSES
-      );
-      const partitionKey = `COURSE_S${semester}`;
-
-      const entities = coursesTable.listEntities({
-        queryOptions: {
-          filter: `PartitionKey eq '${partitionKey}'`,
-        },
-      });
-
-      const courses: CourseEntity[] = [];
-      for await (const entity of entities) {
-        courses.push(this.mapTableEntityToCourse(entity));
-      }
-
+      const courses = await this.repo.listBySemester(semester);
       return courses.sort((a, b) => a.courseCode.localeCompare(b.courseCode));
     } catch (error: any) {
       console.error(`Error getting courses for semester ${semester}:`, error);
@@ -128,22 +96,7 @@ export class CourseService {
 
   async getCourseById(courseId: string): Promise<CourseEntity | null> {
     try {
-      const coursesTable = this.tableService.getTableClient(
-        TABLE_NAMES.COURSES
-      );
-
-      // We need to find the course by scanning since we don't know the partition key
-      const entities = coursesTable.listEntities({
-        queryOptions: {
-          filter: `RowKey eq '${courseId}' and PartitionKey ne 'COURSE_CODE'`,
-        },
-      });
-
-      for await (const entity of entities) {
-        return this.mapTableEntityToCourse(entity);
-      }
-
-      return null;
+      return await this.repo.getById(courseId);
     } catch (error: any) {
       console.error(`Error getting course ${courseId}:`, error);
       throw new Error(`Failed to retrieve course ${courseId}`);
@@ -152,19 +105,7 @@ export class CourseService {
 
   async getCourseByCode(courseCode: string): Promise<CourseEntity | null> {
     try {
-      const coursesTable = this.tableService.getTableClient(
-        TABLE_NAMES.COURSES
-      );
-
-      const lookupEntity = await coursesTable.getEntity(
-        'COURSE_CODE',
-        courseCode
-      );
-      if (!lookupEntity) {
-        return null;
-      }
-
-      return await this.getCourseById(lookupEntity.courseId as string);
+      return await this.repo.getByCode(courseCode);
     } catch (error: any) {
       if (error.statusCode === 404) {
         return null;
@@ -191,10 +132,6 @@ export class CourseService {
         );
       }
 
-      const coursesTable = this.tableService.getTableClient(
-        TABLE_NAMES.COURSES
-      );
-
       const course = new CourseEntity({
         courseCode: courseData.courseCode,
         courseName: courseData.courseName,
@@ -214,14 +151,12 @@ export class CourseService {
         totalReviews: 0,
       });
 
-      await coursesTable.createEntity(course);
-
-      const lookupEntity = new CourseLookupEntity(
+      await this.repo.create(course);
+      await this.repo.upsertCodeLookup(
         courseData.courseCode,
         course.courseId,
         courseData.semester
       );
-      await coursesTable.createEntity(lookupEntity);
 
       return course;
     } catch (error: any) {
@@ -247,10 +182,6 @@ export class CourseService {
       if (!course) {
         return null;
       }
-
-      const coursesTable = this.tableService.getTableClient(
-        TABLE_NAMES.COURSES
-      );
 
       if (
         updateData.courseCode &&
@@ -280,7 +211,6 @@ export class CourseService {
         throw new Error('Credits must be between 1 and 12');
       }
 
-      // Update course properties
       const updatedCourse = { ...course };
       if (updateData.courseCode !== undefined)
         updatedCourse.courseCode = updateData.courseCode;
@@ -322,57 +252,39 @@ export class CourseService {
           totalReviews: updatedCourse.totalReviews,
         });
 
-        await coursesTable.createEntity(newCourse);
-        await coursesTable.deleteEntity(course.partitionKey!, course.rowKey!);
+        await this.repo.create(newCourse);
 
         if (
           updateData.courseCode &&
           updateData.courseCode !== course.courseCode
         ) {
-          await coursesTable.deleteEntity('COURSE_CODE', course.courseCode);
-          const newLookupEntity = new CourseLookupEntity(
+          await this.repo.upsertCodeLookup(
             updatedCourse.courseCode,
             course.courseId,
             updatedCourse.semester
           );
-          await coursesTable.createEntity(newLookupEntity);
         } else {
-          try {
-            const lookupEntity = await coursesTable.getEntity(
-              'COURSE_CODE',
-              course.courseCode
-            );
-            const updatedLookupEntity = {
-              partitionKey: lookupEntity.partitionKey!,
-              rowKey: lookupEntity.rowKey!,
-              courseId: lookupEntity.courseId,
-              semester: updatedCourse.semester,
-              etag: lookupEntity.etag,
-            };
-            await coursesTable.updateEntity(updatedLookupEntity, 'Merge');
-          } catch (error: any) {
-            if (error.statusCode !== 404) {
-              throw error;
-            }
-          }
+          await this.repo.upsertCodeLookup(
+            course.courseCode,
+            course.courseId,
+            updatedCourse.semester
+          );
         }
 
         return newCourse;
       } else {
         Object.assign(course, updatedCourse);
-        await coursesTable.updateEntity(course, 'Merge');
+        await this.repo.update(course);
 
         if (
           updateData.courseCode &&
           updateData.courseCode !== course.courseCode
         ) {
-          await coursesTable.deleteEntity('COURSE_CODE', course.courseCode);
-          const newLookupEntity = new CourseLookupEntity(
+          await this.repo.upsertCodeLookup(
             updatedCourse.courseCode,
             course.courseId,
             course.semester
           );
-          await coursesTable.createEntity(newLookupEntity);
         }
 
         return course;
@@ -391,19 +303,7 @@ export class CourseService {
 
   async deleteCourse(courseId: string): Promise<boolean> {
     try {
-      const course = await this.getCourseById(courseId);
-      if (!course) {
-        return false;
-      }
-
-      const coursesTable = this.tableService.getTableClient(
-        TABLE_NAMES.COURSES
-      );
-      course.isActive = false;
-      course.updatedAt = new Date();
-
-      await coursesTable.updateEntity(course, 'Merge');
-      return true;
+      return await this.repo.deleteSoft(courseId);
     } catch (error: any) {
       console.error(`Error deleting course ${courseId}:`, error);
       throw new Error(`Failed to delete course ${courseId}`);
@@ -416,19 +316,7 @@ export class CourseService {
     totalReviews: number
   ): Promise<void> {
     try {
-      const course = await this.getCourseById(courseId);
-      if (!course) {
-        throw new Error('Course not found');
-      }
-
-      const coursesTable = this.tableService.getTableClient(
-        TABLE_NAMES.COURSES
-      );
-      course.averageRating = Math.round(newAverageRating * 10) / 10; // Round to 1 decimal place
-      course.totalReviews = totalReviews;
-      course.updatedAt = new Date();
-
-      await coursesTable.updateEntity(course, 'Merge');
+      await this.repo.updateRating(courseId, newAverageRating, totalReviews);
     } catch (error: any) {
       console.error(`Error updating course rating for ${courseId}:`, error);
       if (error.message.includes('Course not found')) {
@@ -469,63 +357,5 @@ export class CourseService {
       console.error('Error getting course statistics:', error);
       throw new Error('Failed to retrieve course statistics');
     }
-  }
-
-  private matchesFilters(
-    course: CourseEntity,
-    filters: CourseFilters
-  ): boolean {
-    if (
-      filters.semester !== undefined &&
-      course.semester !== filters.semester
-    ) {
-      return false;
-    }
-
-    if (
-      filters.isActive !== undefined &&
-      course.isActive !== filters.isActive
-    ) {
-      return false;
-    }
-
-    if (
-      filters.minRating !== undefined &&
-      (course.averageRating || 0) < filters.minRating
-    ) {
-      return false;
-    }
-
-    if (filters.searchTerm) {
-      const searchTerm = filters.searchTerm.toLowerCase();
-      const courseNameText = course.courseName.toLowerCase();
-      if (!courseNameText.includes(searchTerm)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  private mapTableEntityToCourse(entity: any): CourseEntity {
-    return new CourseEntity({
-      courseId: entity.rowKey,
-      courseCode: entity.courseCode,
-      courseName: entity.courseName,
-      semester: entity.semester,
-      isRequired: entity.isRequired,
-      credits: entity.credits,
-      description: entity.description,
-      link: entity.link,
-      studyPrograms: entity.studyPrograms,
-      prerequisites: entity.prerequisites,
-      professors: entity.professors,
-      level: entity.level,
-      isActive: entity.isActive,
-      createdAt: new Date(entity.createdAt),
-      updatedAt: new Date(entity.updatedAt),
-      averageRating: entity.averageRating,
-      totalReviews: entity.totalReviews,
-    });
   }
 }

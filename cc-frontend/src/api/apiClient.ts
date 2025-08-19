@@ -1,9 +1,14 @@
 import axios from 'axios';
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:7071/api';
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.MODE === 'development'
+    ? 'http://localhost:7071/api'
+    : '/api');
 
-console.log('API Base URL:', API_BASE_URL);
+if (import.meta.env.MODE === 'development') {
+  console.log('API Base URL:', API_BASE_URL);
+}
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -28,7 +33,9 @@ apiClient.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error('Request interceptor error:', error);
+    if (import.meta.env.MODE === 'development') {
+      console.error('Request interceptor error:', error);
+    }
     return Promise.reject(error);
   }
 );
@@ -36,10 +43,14 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('API Error:', error.response?.status, error.response?.data);
+    if (import.meta.env.MODE === 'development') {
+      console.error('API Error:', error.response?.status, error.response?.data);
+    }
 
     if (error.response?.status === 401) {
-      console.log('Authentication failed, clearing stored session');
+      if (import.meta.env.MODE === 'development') {
+        console.log('Authentication failed, clearing stored session');
+      }
       localStorage.removeItem('courseCompassAuth');
       window.location.reload();
     }

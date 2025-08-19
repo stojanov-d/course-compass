@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, useLocation } from 'react-router';
 import {
   Container,
   Typography,
@@ -31,6 +31,7 @@ import { CreateReviewData, UpdateReviewData } from '../api/reviewApi';
 const CourseDetailPage = () => {
   const { courseCode } = useParams<{ courseCode: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { course, loading, error, fetchCourseByCode } = useCourse();
   const {
@@ -41,6 +42,7 @@ const CourseDetailPage = () => {
     userVotes,
     votingLoading,
     fetchReviews,
+    loadMoreReviews,
     fetchUserReview,
     fetchUserVoteStatuses,
     addReview,
@@ -50,6 +52,8 @@ const CourseDetailPage = () => {
     handleVote,
     clearError,
     resetState,
+    hasMore,
+    loadingMore,
   } = useReviews();
 
   const [showReviewForm, setShowReviewForm] = useState(false);
@@ -197,7 +201,15 @@ const CourseDetailPage = () => {
       <Box mb={2}>
         <Button
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/')}
+          onClick={() => {
+            const state = location.state as { courseListPage?: number } | null;
+            const page = state?.courseListPage;
+            if (window.history.length > 1) {
+              navigate(-1);
+            } else {
+              navigate('/', { state: { courseListPage: page ?? 1 } });
+            }
+          }}
           variant="outlined"
           sx={{ mb: 2 }}
         >
@@ -344,6 +356,19 @@ const CourseDetailPage = () => {
         onClose={() => setSuccessMessage(null)}
         message={successMessage}
       />
+
+      {/* Load more reviews */}
+      {hasMore && (
+        <Box display="flex" justifyContent="center" mt={3}>
+          <Button
+            variant="outlined"
+            disabled={loadingMore}
+            onClick={() => courseCode && loadMoreReviews(courseCode)}
+          >
+            {loadingMore ? 'Loading...' : 'Load more reviews'}
+          </Button>
+        </Box>
+      )}
     </Container>
   );
 };
